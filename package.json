@@ -1,0 +1,55 @@
+{
+  "name": "nuxt-claude-devtools",
+  "version": "1.0.0",
+  "description": "Nuxt DevTools integration for Claude Code AI assistant",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types.d.mts",
+      "import": "./dist/module.mjs"
+    }
+  },
+  "main": "./dist/module.mjs",
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/types.d.mts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepack": "nuxt-module-build && npm run client:build",
+    "client:build": "nuxi generate client",
+    "client:dev": "nuxi dev client --port 3300",
+    "dev": "npm run play:dev",
+    "dev:prepare": "nuxt-module-build --stub && nuxi prepare client",
+    "prepare": "nuxi prepare client",
+    "play:dev": "nuxi dev playground",
+    "play:prod": "npm run prepack && nuxi dev playground",
+    "release": "npm run lint && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@nuxt/devtools-kit": "^3.1.1",
+    "@nuxt/kit": "^4.2.2",
+    "sirv": "^3.0.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@iconify-json/carbon": "^1.2.15",
+    "@nuxt/devtools": "^3.1.1",
+    "@nuxt/devtools-ui-kit": "^3.1.1",
+    "@nuxt/eslint-config": "^1.12.1",
+    "@nuxt/module-builder": "^1.0.2",
+    "@nuxt/schema": "^4.2.2",
+    "@nuxt/ui": "^4.3.0",
+    "@nuxtjs/i18n": "^10.2.1",
+    "changelogen": "^0.6.2",
+    "eslint": "^9.39.2",
+    "nuxt": "^4.2.2"
+  }
+}
