@@ -50,5 +50,8 @@
     "changelogen": "^0.6.2",
     "eslint": "^9.39.2",
     "nuxt": "^4.2.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
