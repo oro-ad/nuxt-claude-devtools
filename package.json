@@ -10,7 +10,11 @@
       "import": "./dist/module.mjs"
     }
   },
+  "repository": {
+    "url": "https://github.com/oro-ad/nuxt-claude-devtools"
+  },
   "main": "./dist/module.mjs",
+  "author": "Simon Bystrov <jobsbystr@gmail.com> (https://sbystr.com/)",
   "typesVersions": {
     "*": {
       ".": [
