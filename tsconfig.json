@@ -1,6 +1,5 @@
 {
   "extends": [
-    "./client/.nuxt/tsconfig.json",
-    "./playground/.nuxt/tsconfig.json"
+    "./client/.nuxt/tsconfig.json"
   ]
 }
