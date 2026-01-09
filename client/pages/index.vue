@@ -59,15 +59,6 @@ function addMessage(role: Message['role'], content: string, streaming = false): 
   return message
 }
 
-function updateLastAssistantMessage(content: string, streaming = true) {
-  const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-  if (lastMessage) {
-    lastMessage.content = content
-    lastMessage.streaming = streaming
-    scrollToBottom()
-  }
-}
-
 function connectSocket() {
   // Connect to the dedicated Socket.IO server on port 3355
   const url = window.location.origin.replace(/:3300$/, ':3355').replace(/:3000$/, ':3355')

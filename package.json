@@ -1,8 +1,8 @@
 {
-  "name": "nuxt-claude-devtools",
+  "name": "@oro.ad/nuxt-claude-devtools",
   "version": "1.0.0",
   "description": "Nuxt DevTools integration for Claude Code AI assistant",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "type": "module",
   "exports": {
     ".": {
@@ -30,7 +30,6 @@
     "prepare": "nuxi prepare client",
     "play:dev": "nuxi dev playground",
     "play:prod": "npm run prepack && nuxi dev playground",
-    "release": "npm run lint && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
     "lint": "eslint ."
   },
   "dependencies": {

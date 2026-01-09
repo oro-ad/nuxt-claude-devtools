@@ -1,6 +1,12 @@
-import {createServer} from 'node:http'
-import {execSync, spawn} from 'node:child_process'
-import {Server as SocketServer} from 'socket.io'
+import { createServer } from 'node:http'
+import { execSync, spawn } from 'node:child_process'
+import type { Socket } from 'socket.io'
+import { Server as SocketServer } from 'socket.io'
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  return String(error)
+}
 
 export const SOCKET_PORT = 3355
 
@@ -64,7 +70,7 @@ export class ClaudeSession {
     })
 
     this.io.on('connection', (socket) => {
-      log('Client connected', {socketId: socket.id})
+      log('Client connected', { socketId: socket.id })
 
       socket.emit('session:status', {
         active: true,
@@ -72,14 +78,14 @@ export class ClaudeSession {
       })
 
       socket.on('message:send', (message: string) => {
-        log('Message received', {length: message.length, preview: message.substring(0, 100)})
+        log('Message received', { length: message.length, preview: message.substring(0, 100) })
         this.sendMessage(message)
       })
 
       socket.on('session:reset', () => {
         log('Resetting session (new conversation)')
         this.continueSession = false
-        this.io?.emit('session:status', {active: true, processing: false})
+        this.io?.emit('session:status', { active: true, processing: false })
       })
 
       // MCP Management
@@ -100,7 +106,7 @@ export class ClaudeSession {
       })
 
       socket.on('disconnect', () => {
-        log('Client disconnected', {socketId: socket.id})
+        log('Client disconnected', { socketId: socket.id })
       })
     })
 
@@ -121,7 +127,7 @@ export class ClaudeSession {
     }
 
     this.isProcessing = true
-    this.io?.emit('session:status', {active: true, processing: true})
+    this.io?.emit('session:status', { active: true, processing: true })
 
     const args = [
       ...this.config.args,
@@ -135,7 +141,7 @@ export class ClaudeSession {
       args.push('--continue')
     }
 
-    log('Spawning Claude process', {command: this.config.command, args, cwd: this.config.rootDir})
+    log('Spawning Claude process', { command: this.config.command, args, cwd: this.config.rootDir })
 
     const child = spawn(this.config.command, args, {
       cwd: this.config.rootDir,
@@ -147,40 +153,41 @@ export class ClaudeSession {
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
-    log('Claude process spawned', {pid: child.pid})
+    log('Claude process spawned', { pid: child.pid })
 
     child.stdout?.on('data', (data) => {
       const chunk = data.toString()
-      log('stdout chunk', {length: chunk.length})
+      log('stdout chunk', { length: chunk.length })
       this.io?.emit('output:chunk', chunk)
     })
 
     child.stderr?.on('data', (data) => {
       const chunk = data.toString()
-      log('stderr chunk', {length: chunk.length, preview: chunk.substring(0, 200)})
+      log('stderr chunk', { length: chunk.length, preview: chunk.substring(0, 200) })
       // Don't emit stderr as error, it might contain progress info
     })
 
     child.on('error', (error) => {
-      log('Process error', {error: error.message})
+      log('Process error', { error: error.message })
       this.io?.emit('session:error', error.message)
       this.isProcessing = false
-      this.io?.emit('session:status', {active: true, processing: false})
+      this.io?.emit('session:status', { active: true, processing: false })
     })
 
     child.on('close', (code) => {
-      log('Process closed', {exitCode: code})
+      log('Process closed', { exitCode: code })
       this.isProcessing = false
 
       if (code === 0) {
         // Mark that next message should continue this conversation
         this.continueSession = true
         this.io?.emit('output:complete')
-      } else {
+      }
+      else {
         this.io?.emit('session:error', `Process exited with code ${code}`)
       }
 
-      this.io?.emit('session:status', {active: true, processing: false})
+      this.io?.emit('session:status', { active: true, processing: false })
     })
 
     // Close stdin immediately
@@ -198,7 +205,7 @@ export class ClaudeSession {
         stdio: ['pipe', 'pipe', 'pipe'],
       })
 
-      log('MCP list output', {output})
+      log('MCP list output', { output })
 
       // Parse the output - format is like:
       // nuxt-ui-remote: https://ui.nuxt.com/mcp (HTTP) - ✓ Connected
@@ -206,7 +213,8 @@ export class ClaudeSession {
 
       for (const line of lines) {
         // Match pattern: name: url/command (TYPE) - status
-        const match = line.match(/^(\S+):\s+(.+?)\s+\((\w+)\)/)
+        // Using non-whitespace capture to avoid backtracking issues
+        const match = line.match(/^(\S+):\s(\S+(?:\s\S+)*)\s\((\w+)\)/)
         if (match) {
           const [, name, urlOrCommand, type] = match
           const transport = type.toLowerCase() as McpTransport
@@ -221,15 +229,16 @@ export class ClaudeSession {
           })
         }
       }
-    } catch (error: any) {
-      log('Error getting MCP servers', {error: error.message})
+    }
+    catch (error: unknown) {
+      log('Error getting MCP servers', { error: getErrorMessage(error) })
     }
 
-    log('MCP servers found', {count: servers.length})
+    log('MCP servers found', { count: servers.length })
     return servers
   }
 
-  private addMcpServer(data: McpAddRequest, socket: any) {
+  private addMcpServer(data: McpAddRequest, socket: Socket) {
     // Scopes:
     // - local (default): private to user in this project, no approval needed
     // - user: global for user across all projects
@@ -241,12 +250,13 @@ export class ClaudeSession {
       // stdio transport: claude mcp add [options] <name> -- <command> <args>
       const argsStr = (data.args || []).join(' ')
       cmd = `${this.config.command} mcp add ${scopeArg} ${data.name} -- ${data.command} ${argsStr}`
-    } else {
+    }
+    else {
       // http/sse transport: claude mcp add [options] <name> <url>
       cmd = `${this.config.command} mcp add --transport ${data.transport} ${scopeArg} ${data.name} ${data.url}`
     }
 
-    log('Running MCP add command', {cmd})
+    log('Running MCP add command', { cmd })
 
     try {
       execSync(cmd, {
@@ -255,21 +265,23 @@ export class ClaudeSession {
         stdio: ['pipe', 'pipe', 'pipe'],
       })
 
-      socket.emit('mcp:added', {success: true, name: data.name})
+      socket.emit('mcp:added', { success: true, name: data.name })
       // Send updated list
       const servers = this.getMcpServers()
       socket.emit('mcp:list', servers)
-    } catch (error: any) {
-      log('Error adding MCP server', {error: error.message})
-      socket.emit('mcp:added', {success: false, error: error.message})
+    }
+    catch (error: unknown) {
+      const errorMessage = getErrorMessage(error)
+      log('Error adding MCP server', { error: errorMessage })
+      socket.emit('mcp:added', { success: false, error: errorMessage })
     }
   }
 
-  private removeMcpServer(data: McpRemoveRequest, socket: any) {
+  private removeMcpServer(data: McpRemoveRequest, socket: Socket) {
     // Without scope, removes from whichever scope the server exists in
     const cmd = `${this.config.command} mcp remove ${data.name}`
 
-    log('Running MCP remove command', {cmd})
+    log('Running MCP remove command', { cmd })
 
     try {
       execSync(cmd, {
@@ -278,13 +290,15 @@ export class ClaudeSession {
         stdio: ['pipe', 'pipe', 'pipe'],
       })
 
-      socket.emit('mcp:removed', {success: true, name: data.name})
+      socket.emit('mcp:removed', { success: true, name: data.name })
       // Send updated list
       const servers = this.getMcpServers()
       socket.emit('mcp:list', servers)
-    } catch (error: any) {
-      log('Error removing MCP server', {error: error.message})
-      socket.emit('mcp:removed', {success: false, error: error.message})
+    }
+    catch (error: unknown) {
+      const errorMessage = getErrorMessage(error)
+      log('Error removing MCP server', { error: errorMessage })
+      socket.emit('mcp:removed', { success: false, error: errorMessage })
     }
   }
 }

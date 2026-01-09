@@ -1,6 +1,6 @@
-import {createResolver, defineNuxtModule} from '@nuxt/kit'
-import {setupDevToolsUI} from './devtools'
-import {destroyClaudeSession, getClaudeSession, SOCKET_PORT} from './runtime/server/claude-session'
+import { createResolver, defineNuxtModule } from '@nuxt/kit'
+import { setupDevToolsUI } from './devtools'
+import { destroyClaudeSession, getClaudeSession, SOCKET_PORT } from './runtime/server/claude-session'
 
 export interface ClaudeOptions {
   command: string
@@ -14,7 +14,7 @@ export interface ModuleOptions {
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: 'nuxt-claude-devtools',
+    name: '@oro.ad/nuxt-claude-devtools',
     configKey: 'claudeDevtools',
   },
   defaults: {
@@ -30,7 +30,6 @@ export default defineNuxtModule<ModuleOptions>({
       return
     }
 
-    // @ts-ignore
     const resolver = createResolver(import.meta.url)
 
     // Store options in runtime config for server handler

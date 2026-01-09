@@ -1,4 +1,4 @@
-# Nuxt Claude DevTools
+# @oro.ad/nuxt-claude-devtools
 
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
@@ -26,20 +26,20 @@ Nuxt DevTools integration for [Claude Code](https://claude.com/claude-code) AI a
 
 ```bash
 # Using pnpm
-pnpm add -D nuxt-claude-devtools
+pnpm add -D @oro.ad/nuxt-claude-devtools
 
 # Using yarn
-yarn add --dev nuxt-claude-devtools
+yarn add --dev @oro.ad/nuxt-claude-devtools
 
 # Using npm
-npm install --save-dev nuxt-claude-devtools
+npm install --save-dev @oro.ad/nuxt-claude-devtools
 ```
 
 2. Add to your `nuxt.config.ts`:
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['nuxt-claude-devtools'],
+  modules: ['@oro.ad/nuxt-claude-devtools'],
 
   devtools: {
     enabled: true,
@@ -117,6 +117,11 @@ Example MCP servers:
 # Install dependencies
 npm install
 
+# Install dependencies for client
+cd ./client
+npm install
+cd ../
+
 # Generate type stubs
 npm run dev:prepare
 
@@ -155,17 +160,17 @@ npm run lint
 
 ## License
 
-[MIT](./LICENSE)
+[This project is licensed under the GNU General Public License v3.0 (GPL-3.0).](./LICENSE.md)
 
 <!-- Badges -->
-[npm-version-src]: https://img.shields.io/npm/v/nuxt-claude-devtools/latest.svg?style=flat&colorA=18181B&colorB=28CF8D
-[npm-version-href]: https://npmjs.com/package/nuxt-claude-devtools
+[npm-version-src]: https://img.shields.io/npm/v/@oro.ad/nuxt-claude-devtools/latest.svg?style=flat&colorA=18181B&colorB=28CF8D
+[npm-version-href]: https://npmjs.com/package/@oro.ad/nuxt-claude-devtools
 
-[npm-downloads-src]: https://img.shields.io/npm/dm/nuxt-claude-devtools.svg?style=flat&colorA=18181B&colorB=28CF8D
-[npm-downloads-href]: https://npmjs.com/package/nuxt-claude-devtools
+[npm-downloads-src]: https://img.shields.io/npm/dm/@oro.ad/nuxt-claude-devtools.svg?style=flat&colorA=18181B&colorB=28CF8D
+[npm-downloads-href]: https://npmjs.com/package/@oro.ad/nuxt-claude-devtools
 
-[license-src]: https://img.shields.io/npm/l/nuxt-claude-devtools.svg?style=flat&colorA=18181B&colorB=28CF8D
-[license-href]: https://npmjs.com/package/nuxt-claude-devtools
+[license-src]: https://img.shields.io/badge/license-GPL--3.0-green.svg?style=flat&colorA=18181B&colorB=28CF8D
+[license-href]: ./LICENSE.md
 
 [nuxt-src]: https://img.shields.io/badge/Nuxt-18181B?logo=nuxt
 [nuxt-href]: https://nuxt.com
