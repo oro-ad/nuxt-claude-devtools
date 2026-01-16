@@ -7,6 +7,8 @@ export default defineNuxtConfig({
     // Claude DevTools module
     '../src/module',
 
+    '@oro.ad/nuxt-claude-devtools-bc',
+
     // Start a sub Nuxt Server for developing the client
     defineNuxtModule({
       setup(_, nuxt) {

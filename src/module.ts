@@ -1,6 +1,10 @@
-import { createResolver, defineNuxtModule } from '@nuxt/kit'
+import { addServerPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
+import { getTunnelConfig } from '@oro.ad/nuxt-claude-devtools-bc/tunnel'
+import { createLogger } from './logger'
 import { setupDevToolsUI } from './devtools'
-import { destroyClaudeSession, getClaudeSession, SOCKET_PORT } from './runtime/server/claude-session'
+import { destroyClaudeSession, SOCKET_PATH } from './runtime/server/claude-session'
+
+const log = createLogger('module')
 
 export interface ClaudeOptions {
   command: string
@@ -32,28 +36,38 @@ export default defineNuxtModule<ModuleOptions>({
 
     const resolver = createResolver(import.meta.url)
 
+    // Detect tunnel configuration
+    const tunnel = getTunnelConfig()
+    if (tunnel) {
+      log(`Tunnel detected: ${tunnel.origin}`)
+    }
+
+    // Enable experimental WebSocket support in Nitro (required for Socket.IO)
+    nuxt.options.nitro = nuxt.options.nitro || {}
+    nuxt.options.nitro.experimental = nuxt.options.nitro.experimental || {}
+    nuxt.options.nitro.experimental.websocket = true
+    log('Enabled Nitro experimental WebSocket support')
+
     // Store options in runtime config for server handler
     nuxt.options.runtimeConfig.claudeDevtools = {
       claude: options.claude,
       rootDir: nuxt.options.rootDir,
+      tunnelOrigin: tunnel?.origin || null,
     }
 
-    // Start Socket.IO server on separate port
-    nuxt.hook('ready', () => {
-      console.log(`[claude-devtools] Starting Socket.IO server on port ${SOCKET_PORT}`)
+    // Expose tunnel info to client via public runtime config
+    nuxt.options.runtimeConfig.public.claudeDevtools = {
+      socketPath: SOCKET_PATH,
+      tunnelOrigin: tunnel?.origin || null,
+    }
 
-      const session = getClaudeSession({
-        command: options.claude.command,
-        args: options.claude.args,
-        rootDir: nuxt.options.rootDir,
-      })
-
-      session.startSocketServer()
-    })
+    // Add Nitro plugin for Socket.IO
+    addServerPlugin(resolver.resolve('./runtime/server/plugins/socket.io'))
+    log('Added Socket.IO Nitro plugin')
 
     // Cleanup on close
     nuxt.hook('close', () => {
-      console.log('[claude-devtools] Cleaning up Claude session')
+      log('Cleaning up Claude session')
       destroyClaudeSession()
     })
 

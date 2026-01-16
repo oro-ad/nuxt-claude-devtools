@@ -2,6 +2,7 @@
   "private": true,
   "name": "@oro.ad/nuxt-claude-devtools-client",
   "dependencies": {
+    "@oro.ad/nuxt-claude-devtools-bc": "^1.0.5",
     "socket.io-client": "^4.8.1"
   }
 }

@@ -2,6 +2,9 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
+import { useTunnel } from '#imports'
+
+const tunnel = useTunnel()
 
 interface McpServer {
   name: string
@@ -30,11 +33,24 @@ const newServer = ref({
 })
 const formError = ref('')
 
+function getSocketUrl(): string {
+  // If tunnel is active, use tunnel origin
+  if (tunnel.isActive.value && tunnel.origin.value) {
+    return tunnel.origin.value
+  }
+  // Fallback to current page origin (works through proxy)
+  return window.location.origin
+}
+
 function connectSocket() {
-  const url = window.location.origin.replace(/:3300$/, ':3355').replace(/:3000$/, ':3355')
+  const url = getSocketUrl()
+  console.log('[mcp-client] Connecting to socket at', url, 'tunnel active:', tunnel.isActive.value)
 
   socket.value = io(url, {
+    path: '/__claude_devtools_socket',
     transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 5,
   })
 
   socket.value.on('connect', () => {

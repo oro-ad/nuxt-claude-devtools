@@ -1,14 +1,15 @@
-import { createServer } from 'node:http'
 import { execSync, spawn } from 'node:child_process'
-import type { Socket } from 'socket.io'
-import { Server as SocketServer } from 'socket.io'
+import type { Socket, Server as SocketServer } from 'socket.io'
+import { createLogger } from '../../logger'
+
+const log = createLogger('session', { timestamp: true })
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   return String(error)
 }
 
-export const SOCKET_PORT = 3355
+export const SOCKET_PATH = '/__claude_devtools_socket'
 
 type McpTransport = 'stdio' | 'http' | 'sse'
 type McpScope = 'global' | 'local'
@@ -41,17 +42,12 @@ export interface ClaudeSessionConfig {
   command: string
   args: string[]
   rootDir: string
-}
-
-function log(message: string, data?: unknown) {
-  const timestamp = new Date().toISOString()
-  console.log(`[claude-session] [${timestamp}] ${message}`, data !== undefined ? data : '')
+  tunnelOrigin?: string | null
 }
 
 export class ClaudeSession {
   private config: ClaudeSessionConfig
   private io: SocketServer | null = null
-  private httpServer: ReturnType<typeof createServer> | null = null
   private isProcessing: boolean = false
   private continueSession: boolean = false
 
@@ -59,15 +55,9 @@ export class ClaudeSession {
     this.config = config
   }
 
-  startSocketServer() {
-    this.httpServer = createServer()
-
-    this.io = new SocketServer(this.httpServer, {
-      cors: {
-        origin: '*',
-        methods: ['GET', 'POST'],
-      },
-    })
+  attachSocketIO(io: SocketServer) {
+    this.io = io
+    log(`Socket.IO attached, setting up event handlers`)
 
     this.io.on('connection', (socket) => {
       log('Client connected', { socketId: socket.id })
@@ -109,15 +99,10 @@ export class ClaudeSession {
         log('Client disconnected', { socketId: socket.id })
       })
     })
-
-    this.httpServer.listen(SOCKET_PORT, () => {
-      log(`Socket.IO server started on port ${SOCKET_PORT}`)
-    })
   }
 
   destroy() {
     this.io?.close()
-    this.httpServer?.close()
   }
 
   private sendMessage(message: string) {
@@ -305,10 +290,15 @@ export class ClaudeSession {
 
 let sessionInstance: ClaudeSession | null = null
 
-export function getClaudeSession(config: ClaudeSessionConfig): ClaudeSession {
+export function initClaudeSession(config: ClaudeSessionConfig): ClaudeSession {
   if (!sessionInstance) {
     sessionInstance = new ClaudeSession(config)
+    log('Session initialized')
   }
+  return sessionInstance
+}
+
+export function getClaudeSessionInstance(): ClaudeSession | null {
   return sessionInstance
 }
 
@@ -316,5 +306,6 @@ export function destroyClaudeSession() {
   if (sessionInstance) {
     sessionInstance.destroy()
     sessionInstance = null
+    log('Session destroyed')
   }
 }

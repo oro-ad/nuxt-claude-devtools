@@ -3,8 +3,10 @@ import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 import { useDevtoolsClient } from '@nuxt/devtools-kit/iframe-client'
+import { useTunnel } from '#imports'
 
 const client = useDevtoolsClient()
+const tunnel = useTunnel()
 
 interface Message {
   id: string
@@ -59,12 +61,25 @@ function addMessage(role: Message['role'], content: string, streaming = false): 
   return message
 }
 
+function getSocketUrl(): string {
+  // If tunnel is active, use tunnel origin
+  if (tunnel.isActive.value && tunnel.origin.value) {
+    return tunnel.origin.value
+  }
+  // Fallback to current page origin (works through proxy)
+  return window.location.origin
+}
+
 function connectSocket() {
-  // Connect to the dedicated Socket.IO server on port 3355
-  const url = window.location.origin.replace(/:3300$/, ':3355').replace(/:3000$/, ':3355')
+  // Connect through the proxy path (supports tunnel)
+  const url = getSocketUrl()
+  console.log('[claude-client] Connecting to socket at', url, 'tunnel active:', tunnel.isActive.value)
 
   socket.value = io(url, {
+    path: '/__claude_devtools_socket',
     transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 5,
   })
 
   socket.value.on('connect', () => {
