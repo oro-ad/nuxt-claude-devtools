@@ -1,6 +1,6 @@
 import { execSync, spawn } from 'node:child_process'
 import type { Socket, Server as SocketServer } from 'socket.io'
-import { createLogger } from '../../logger'
+import { createLogger } from '../logger'
 
 const log = createLogger('session', { timestamp: true })
 

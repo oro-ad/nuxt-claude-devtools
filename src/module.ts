@@ -1,6 +1,6 @@
 import { addServerPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
 import { getTunnelConfig } from '@oro.ad/nuxt-claude-devtools-bc/tunnel'
-import { createLogger } from './logger'
+import { createLogger } from './runtime/logger'
 import { setupDevToolsUI } from './devtools'
 import { destroyClaudeSession, SOCKET_PATH } from './runtime/server/claude-session'
 

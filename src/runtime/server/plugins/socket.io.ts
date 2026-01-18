@@ -3,7 +3,7 @@ import { defineNitroPlugin, useRuntimeConfig } from 'nitropack/runtime'
 import { Server as Engine } from 'engine.io'
 import { Server } from 'socket.io'
 import { defineEventHandler } from 'h3'
-import { createLogger } from '../../../logger'
+import { createLogger } from '../../logger'
 import { getClaudeSessionInstance, initClaudeSession } from '../claude-session'
 
 const log = createLogger('plugin')
