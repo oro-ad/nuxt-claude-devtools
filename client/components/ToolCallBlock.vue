@@ -148,7 +148,6 @@ async function openInIde() {
     }
 
     // Fallback: try webstorm:// protocol (common for JetBrains IDEs)
-    const line = lineNumber.value ? `:${lineNumber.value}` : ''
     const ideUrl = `webstorm://open?file=${encodeURIComponent(filePath.value)}${lineNumber.value ? `&line=${lineNumber.value}` : ''}`
     window.open(ideUrl, '_self')
   }

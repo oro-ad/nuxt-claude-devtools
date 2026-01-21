@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 interface Conversation {
   id: string
   title?: string
@@ -8,17 +8,15 @@ interface Conversation {
   projectPath: string
 }
 
-const props = defineProps<{
+defineProps<{
   conversations: Conversation[]
   activeId: string | null
   isOpen: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', id: string): void
-  (e: 'delete', id: string): void
-  (e: 'new'): void
-  (e: 'close'): void
+  (e: 'select' | 'delete', id: string): void
+  (e: 'new' | 'close'): void
 }>()
 
 function formatDate(dateStr: string): string {
@@ -70,13 +68,13 @@ function handleDelete(e: Event, id: string) {
       <!-- New Chat Button -->
       <div class="p-3 border-b border-gray-200 dark:border-gray-700">
         <NButton
-          n="blue"
           class="w-full"
+          n="blue"
           @click="emit('new')"
         >
           <NIcon
-            icon="carbon:add"
             class="mr-1"
+            icon="carbon:add"
           />
           New Chat
         </NButton>
@@ -108,8 +106,8 @@ function handleDelete(e: Event, id: string) {
               @click="handleDelete($event, conv.id)"
             >
               <NIcon
-                icon="carbon:trash-can"
                 class="text-red-500 text-sm"
+                icon="carbon:trash-can"
               />
             </button>
           </div>
@@ -121,8 +119,8 @@ function handleDelete(e: Event, id: string) {
           class="p-4 text-center opacity-50 text-sm"
         >
           <NIcon
-            icon="carbon:chat"
             class="text-2xl mb-2"
+            icon="carbon:chat"
           />
           <p>No conversations yet</p>
         </div>

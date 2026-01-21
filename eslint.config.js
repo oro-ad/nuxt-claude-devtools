@@ -12,4 +12,9 @@ export default createConfigForNuxt({
       'client',
     ],
   },
+}, {
+  rules: {
+    '@typescript-eslint/no-explicit-any': 'warn',
+    'vue/no-v-html': 'warn',
+  },
 })

@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
-
 const features = [
   {
     icon: '💬',
@@ -53,8 +51,6 @@ const quickStart = [
 
 const npmPackage = '@oro.ad/nuxt-claude-devtools'
 const repoUrl = 'https://github.com/oro-ad/nuxt-claude-devtools'
-
-const activeDemo = ref<string | null>(null)
 </script>
 
 <template>

@@ -19,13 +19,13 @@ export interface Agent {
 }
 
 interface AgentFrontmatter {
-  'name'?: string
-  'description'?: string
-  'tools'?: string
-  'disallowedTools'?: string
-  'model'?: string
-  'permissionMode'?: string
-  'skills'?: string[]
+  name?: string
+  description?: string
+  tools?: string
+  disallowedTools?: string
+  model?: string
+  permissionMode?: string
+  skills?: string[]
 }
 
 export class AgentsManager {

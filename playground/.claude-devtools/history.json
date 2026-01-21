@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "conversations": [
+    {
+      "id": "conv_1768962101698_f4v73on",
+      "messages": [],
+      "createdAt": "2026-01-21T02:21:41.699Z",
+      "updatedAt": "2026-01-21T02:21:41.699Z",
+      "projectPath": "/Users/user/WebstormProjects/nuxt-claude-devtools/playground"
+    }
+  ],
+  "activeConversationId": "conv_1768962101698_f4v73on"
+}
