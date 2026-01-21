@@ -18,11 +18,10 @@ interface McpServer {
 
 const socket = ref<Socket | null>(null)
 const isConnected = ref(false)
-const servers = ref<McpServer[]>([])
 const isLoading = ref(false)
 
-// Form state
-const showAddForm = ref(false)
+const servers = ref<McpServer[]>([])
+const showAddServerForm = ref(false)
 const newServer = ref({
   name: '',
   transport: 'stdio' as 'stdio' | 'http' | 'sse',
@@ -31,20 +30,19 @@ const newServer = ref({
   url: '',
   scope: 'local' as 'global' | 'local',
 })
+
 const formError = ref('')
 
 function getSocketUrl(): string {
-  // If tunnel is active, use tunnel origin
   if (tunnel.isActive.value && tunnel.origin.value) {
     return tunnel.origin.value
   }
-  // Fallback to current page origin (works through proxy)
   return window.location.origin
 }
 
 function connectSocket() {
   const url = getSocketUrl()
-  console.log('[mcp-client] Connecting to socket at', url, 'tunnel active:', tunnel.isActive.value)
+  console.log('[mcp-client] Connecting to socket at', url)
 
   socket.value = io(url, {
     path: '/__claude_devtools_socket',
@@ -71,10 +69,9 @@ function connectSocket() {
   })
 
   socket.value.on('mcp:added', (data: { success: boolean, name?: string, error?: string }) => {
-    console.log('[mcp-client] MCP added result', data)
     if (data.success) {
-      showAddForm.value = false
-      resetForm()
+      showAddServerForm.value = false
+      resetServerForm()
     }
     else {
       formError.value = data.error || 'Failed to add MCP server'
@@ -82,7 +79,6 @@ function connectSocket() {
   })
 
   socket.value.on('mcp:removed', (data: { success: boolean, name?: string, error?: string }) => {
-    console.log('[mcp-client] MCP removed result', data)
     if (!data.success) {
       alert(`Failed to remove: ${data.error}`)
     }
@@ -96,7 +92,7 @@ function loadServers() {
   }
 }
 
-function resetForm() {
+function resetServerForm() {
   newServer.value = {
     name: '',
     transport: 'stdio',
@@ -142,14 +138,10 @@ function addServer() {
 }
 
 function removeServer(server: McpServer) {
-  if (!confirm(`Remove MCP server "${server.name}"?`)) {
-    return
-  }
+  if (!confirm(`Remove MCP server "${server.name}"?`)) return
 
   if (socket.value) {
-    socket.value.emit('mcp:remove', {
-      name: server.name,
-    })
+    socket.value.emit('mcp:remove', { name: server.name })
   }
 }
 
@@ -187,7 +179,7 @@ onUnmounted(() => {
         <NButton
           :disabled="!isConnected"
           n="blue"
-          @click="showAddForm = true"
+          @click="showAddServerForm = true"
         >
           <NIcon
             class="mr-1"
@@ -211,157 +203,157 @@ onUnmounted(() => {
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-auto p-4 space-y-6">
-      <!-- Add Form Modal -->
-      <div
-        v-if="showAddForm"
-        class="n-bg-active rounded-lg p-4 mb-4"
-      >
-        <h3 class="font-bold mb-4">
-          Add MCP Server
-        </h3>
-
-        <div
-          v-if="formError"
-          class="mb-4"
+    <div class="flex-1 overflow-auto p-4">
+      <div class="space-y-4">
+        <NTip
+          class="text-sm"
+          icon="carbon:information"
+          n="blue"
         >
-          <NTip
-            icon="carbon:warning"
-            n="red"
-          >
-            {{ formError }}
-          </NTip>
-        </div>
+          Model Context Protocol (MCP) servers extend Claude's capabilities with custom tools and data sources.
+        </NTip>
 
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Name</label>
-            <NTextInput
-              v-model="newServer.name"
-              class="w-full"
-              placeholder="e.g. github, nuxt-ui-remote"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">Transport</label>
-            <div class="flex gap-4">
-              <label class="flex items-center gap-2">
-                <input
-                  v-model="newServer.transport"
-                  name="transport"
-                  type="radio"
-                  value="stdio"
-                >
-                <span>stdio (local command)</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input
-                  v-model="newServer.transport"
-                  name="transport"
-                  type="radio"
-                  value="http"
-                >
-                <span>HTTP (remote)</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input
-                  v-model="newServer.transport"
-                  name="transport"
-                  type="radio"
-                  value="sse"
-                >
-                <span>SSE (remote)</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- stdio fields -->
-          <template v-if="newServer.transport === 'stdio'">
-            <div>
-              <label class="block text-sm font-medium mb-1">Command</label>
-              <NTextInput
-                v-model="newServer.command"
-                class="w-full font-mono"
-                placeholder="e.g. npx"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-medium mb-1">Arguments (space separated)</label>
-              <NTextInput
-                v-model="newServer.args"
-                class="w-full font-mono"
-                placeholder="e.g. -y @modelcontextprotocol/server-github"
-              />
-            </div>
-          </template>
-
-          <!-- http/sse fields -->
-          <template v-if="newServer.transport === 'http' || newServer.transport === 'sse'">
-            <div>
-              <label class="block text-sm font-medium mb-1">URL</label>
-              <NTextInput
-                v-model="newServer.url"
-                class="w-full font-mono"
-                placeholder="e.g. https://ui.nuxt.com/mcp"
-              />
-            </div>
-          </template>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">Scope</label>
-            <div class="flex gap-4">
-              <label class="flex items-center gap-2">
-                <input
-                  v-model="newServer.scope"
-                  name="scope"
-                  type="radio"
-                  value="local"
-                >
-                <span>Local (this project, private)</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input
-                  v-model="newServer.scope"
-                  name="scope"
-                  type="radio"
-                  value="global"
-                >
-                <span>User (all projects)</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="flex gap-2 pt-2">
-            <NButton
-              n="green"
-              @click="addServer"
-            >
-              Add Server
-            </NButton>
-            <NButton
-              n="gray"
-              @click="showAddForm = false; resetForm()"
-            >
-              Cancel
-            </NButton>
-          </div>
-        </div>
-      </div>
-
-      <!-- All Servers -->
-      <div>
-        <h2 class="text-lg font-semibold mb-3 flex items-center gap-2">
-          <NIcon icon="carbon:plug" />
-          Configured Servers
-        </h2>
-
+        <!-- Add Server Form -->
         <div
-          v-if="servers.length === 0"
+          v-if="showAddServerForm"
+          class="n-bg-active rounded-lg p-4"
+        >
+          <h3 class="font-bold mb-4">
+            Add MCP Server
+          </h3>
+
+          <div
+            v-if="formError"
+            class="mb-4"
+          >
+            <NTip
+              icon="carbon:warning"
+              n="red"
+            >
+              {{ formError }}
+            </NTip>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Name</label>
+              <NTextInput
+                v-model="newServer.name"
+                class="w-full"
+                placeholder="e.g. github, nuxt-ui-remote"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Transport</label>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-2">
+                  <input
+                    v-model="newServer.transport"
+                    name="transport"
+                    type="radio"
+                    value="stdio"
+                  >
+                  <span>stdio</span>
+                </label>
+                <label class="flex items-center gap-2">
+                  <input
+                    v-model="newServer.transport"
+                    name="transport"
+                    type="radio"
+                    value="http"
+                  >
+                  <span>HTTP</span>
+                </label>
+                <label class="flex items-center gap-2">
+                  <input
+                    v-model="newServer.transport"
+                    name="transport"
+                    type="radio"
+                    value="sse"
+                  >
+                  <span>SSE</span>
+                </label>
+              </div>
+            </div>
+
+            <template v-if="newServer.transport === 'stdio'">
+              <div>
+                <label class="block text-sm font-medium mb-1">Command</label>
+                <NTextInput
+                  v-model="newServer.command"
+                  class="w-full font-mono"
+                  placeholder="e.g. npx"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">Arguments</label>
+                <NTextInput
+                  v-model="newServer.args"
+                  class="w-full font-mono"
+                  placeholder="e.g. -y @modelcontextprotocol/server-github"
+                />
+              </div>
+            </template>
+
+            <template v-if="newServer.transport === 'http' || newServer.transport === 'sse'">
+              <div>
+                <label class="block text-sm font-medium mb-1">URL</label>
+                <NTextInput
+                  v-model="newServer.url"
+                  class="w-full font-mono"
+                  placeholder="e.g. https://ui.nuxt.com/mcp"
+                />
+              </div>
+            </template>
+
+            <div>
+              <label class="block text-sm font-medium mb-1">Scope</label>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-2">
+                  <input
+                    v-model="newServer.scope"
+                    name="scope"
+                    type="radio"
+                    value="local"
+                  >
+                  <span>Local (this project)</span>
+                </label>
+                <label class="flex items-center gap-2">
+                  <input
+                    v-model="newServer.scope"
+                    name="scope"
+                    type="radio"
+                    value="global"
+                  >
+                  <span>User (all projects)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-2">
+              <NButton
+                n="green"
+                @click="addServer"
+              >
+                Add Server
+              </NButton>
+              <NButton
+                n="gray"
+                @click="showAddServerForm = false; resetServerForm()"
+              >
+                Cancel
+              </NButton>
+            </div>
+          </div>
+        </div>
+
+        <!-- Servers List -->
+        <div
+          v-if="servers.length === 0 && !showAddServerForm && !isLoading"
           class="n-bg-active rounded-lg p-4 opacity-50"
         >
-          No MCP servers configured
+          No MCP servers configured. Click "Add Server" to get started.
         </div>
 
         <div
@@ -381,6 +373,12 @@ onUnmounted(() => {
                   class="text-xs"
                 >
                   {{ server.transport }}
+                </NBadge>
+                <NBadge
+                  :n="server.scope === 'local' ? 'green' : 'purple'"
+                  class="text-xs"
+                >
+                  {{ server.scope }}
                 </NBadge>
               </div>
               <div class="text-sm opacity-70 font-mono">

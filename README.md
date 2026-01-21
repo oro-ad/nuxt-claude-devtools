@@ -5,19 +5,24 @@
 [![License][license-src]][license-href]
 [![Nuxt][nuxt-src]][nuxt-href]
 
-Nuxt DevTools integration for [Claude Code](https://claude.com/claude-code) AI assistant. Chat with Claude directly from your Nuxt DevTools panel.
+Nuxt DevTools integration for [Claude Code](https://claude.ai/code) AI assistant. Chat with Claude directly from your Nuxt DevTools panel with full support for skills, agents, and slash commands.
 
 ## Features
 
 - **Chat Interface** — Interactive chat with Claude AI directly in DevTools
 - **Streaming Responses** — Real-time streaming output from Claude
 - **Session Management** — Start new conversations or continue previous ones
+- **Chat History** — Browse and restore previous conversations
+- **Skills** — Markdown-based skills to extend Claude's capabilities (`.claude/skills/<name>/SKILL.md`)
+- **Subagents** — Specialized AI agents for delegated tasks (`.claude/agents/<name>.md`)
+- **Slash Commands** — Custom commands with YAML frontmatter (`.claude/commands/<name>.md`)
+- **Documentation** — Manage project docs that Claude can reference (`.claude/docs/`)
 - **MCP Servers** — Manage Model Context Protocol servers (add, remove, list)
-- **Multiple Transports** — Support for stdio, HTTP, and SSE MCP transports
+- **Tunnel Support** — Remote access via cloudflared tunnel
 
 ## Prerequisites
 
-- [Claude Code CLI](https://claude.com/claude-code) must be installed and authenticated
+- [Claude Code CLI](https://claude.ai/code) must be installed and authenticated
 - Nuxt 3.x or 4.x with DevTools enabled
 
 ## Quick Setup
@@ -76,6 +81,94 @@ export default defineNuxtConfig({
 
 The module automatically uses `--continue` for follow-up messages within a session. Click "New Chat" to start a fresh conversation.
 
+### Skills
+
+Skills extend Claude's capabilities with specialized knowledge. Create markdown files with YAML frontmatter:
+
+**Location:** `.claude/skills/<skill-name>/SKILL.md`
+
+```markdown
+---
+description: Vue 3 Composition API expert
+model: sonnet
+---
+
+You are an expert in Vue 3 Composition API...
+
+## Guidelines
+- Always use `<script setup lang="ts">`
+- Follow TypeScript best practices
+```
+
+**Frontmatter options:**
+| Field | Description |
+|-------|-------------|
+| `description` | Brief description (required) |
+| `model` | Model to use: `sonnet`, `opus`, `haiku` |
+| `argumentHint` | Hint for skill arguments (e.g., `<query>`) |
+
+### Subagents
+
+Subagents are specialized AI agents that Claude can delegate tasks to:
+
+**Location:** `.claude/agents/<agent-name>.md`
+
+```markdown
+---
+name: code-reviewer
+description: Reviews code for quality and best practices
+model: sonnet
+tools: Read, Grep, Glob
+skills:
+  - typescript-strict
+  - vue-composition-api
+---
+
+You are a code reviewer. Your job is to:
+1. Review code for bugs and issues
+2. Suggest improvements
+3. Check for security vulnerabilities
+```
+
+**Frontmatter options:**
+| Field | Description |
+|-------|-------------|
+| `name` | Agent name (kebab-case) |
+| `description` | Brief description |
+| `model` | Model: `sonnet`, `opus`, `haiku` |
+| `tools` | Comma-separated list of allowed tools |
+| `disallowedTools` | Tools to exclude |
+| `skills` | Array of skill names to preload |
+| `permissionMode` | `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan` |
+
+### Slash Commands
+
+Create custom commands with markdown and YAML frontmatter:
+
+**Location:** `.claude/commands/<command-name>.md`
+
+```markdown
+---
+description: Generate a Vue component
+allowedTools: Read, Write, Edit
+---
+
+Generate a Vue 3 component with:
+- `<script setup lang="ts">`
+- Typed props with `defineProps<T>()`
+- CSS variables for styling
+```
+
+Invoke with `/<command-name>` in the chat.
+
+### Documentation
+
+Store project documentation that Claude can reference:
+
+**Location:** `.claude/docs/`
+
+Create markdown files for architecture, components, API reference, etc. Claude will use these as context when answering questions about your project.
+
 ### MCP Servers
 
 Manage Model Context Protocol servers directly from DevTools:
@@ -97,18 +190,50 @@ Example MCP servers:
 │  ┌───────────────────────────────────────────────────┐  │
 │  │              Claude DevTools Panel                │  │
 │  │         (iframe at /__claude-devtools)            │  │
+│  │                                                   │  │
+│  │  Pages:                                           │  │
+│  │  - /           Chat interface                     │  │
+│  │  - /skills     Skills manager                     │  │
+│  │  - /agents     Subagents manager                  │  │
+│  │  - /commands   Slash commands manager             │  │
+│  │  - /docs       Documentation viewer               │  │
+│  │  - /mcp        MCP servers config                 │  │
 │  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
                           │
-                          │ Socket.IO (port 3355)
+                          │ Socket.IO
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │                  Claude Session Server                  │
 │  ┌─────────────────┐    ┌─────────────────────────────┐│
 │  │  Socket.IO Hub  │───▶│  Claude CLI Process         ││
 │  │                 │    │  (spawn with --continue)    ││
-│  └─────────────────┘    └─────────────────────────────┘│
+│  │  Managers:      │    └─────────────────────────────┘│
+│  │  - Skills       │                                   │
+│  │  - Agents       │    ┌─────────────────────────────┐│
+│  │  - Commands     │    │  File Storage               ││
+│  │  - Docs         │    │  .claude/skills/            ││
+│  │  - History      │    │  .claude/agents/            ││
+│  └─────────────────┘    │  .claude/commands/          ││
+│                         │  .claude/docs/              ││
+│                         └─────────────────────────────┘│
 └─────────────────────────────────────────────────────────┘
+```
+
+## File Structure
+
+```
+.claude/
+├── settings.local.json    # Local permissions
+├── skills/                # Skills (markdown)
+│   └── <skill-name>/
+│       └── SKILL.md
+├── agents/                # Subagents (markdown)
+│   └── <agent-name>.md
+├── commands/              # Slash commands (markdown)
+│   └── <command-name>.md
+└── docs/                  # Documentation
+    └── *.md
 ```
 
 ## Development
@@ -139,24 +264,35 @@ npm run lint
 
 ```
 ├── src/
-│   ├── module.ts          # Nuxt module definition
-│   ├── devtools.ts        # DevTools UI setup
+│   ├── module.ts              # Nuxt module definition
+│   ├── devtools.ts            # DevTools UI setup
 │   └── runtime/
+│       ├── logger.ts          # Logging utility
 │       └── server/
-│           └── claude-session.ts  # Socket.IO server & Claude process management
-├── client/                # DevTools panel UI (Nuxt app)
+│           ├── claude-session.ts   # Socket.IO server & Claude process
+│           ├── skills-manager.ts   # Skills CRUD operations
+│           ├── agents-manager.ts   # Agents CRUD operations
+│           ├── commands-manager.ts # Commands CRUD operations
+│           ├── docs-manager.ts     # Documentation management
+│           └── history-manager.ts  # Chat history management
+├── client/                    # DevTools panel UI (Nuxt app)
 │   ├── pages/
-│   │   ├── index.vue      # Chat interface
-│   │   └── mcp.vue        # MCP servers management
+│   │   ├── index.vue          # Chat interface
+│   │   ├── skills.vue         # Skills manager
+│   │   ├── agents.vue         # Subagents manager
+│   │   ├── commands.vue       # Slash commands manager
+│   │   ├── docs.vue           # Documentation viewer
+│   │   └── mcp.vue            # MCP servers management
 │   └── nuxt.config.ts
-└── playground/            # Development playground
+└── playground/                # Development playground
 ```
 
 ## Security Notes
 
 - The module only runs in development mode (`nuxt.options.dev`)
 - Uses `--dangerously-skip-permissions` flag for Claude CLI (development only)
-- Socket.IO server runs on a separate port (3355)
+- Socket.IO server runs on a dedicated port
+- All file operations are scoped to `.claude/` directory
 
 ## License
 

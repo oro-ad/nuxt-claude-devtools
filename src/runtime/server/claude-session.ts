@@ -1,12 +1,32 @@
 import { execSync, spawn } from 'node:child_process'
 import type { Socket, Server as SocketServer } from 'socket.io'
 import { createLogger } from '../logger'
+import { AgentsManager } from './agents-manager'
+import { CommandsManager } from './commands-manager'
+import { DocsManager } from './docs-manager'
+import { HistoryManager } from './history-manager'
+import { SkillsManager } from './skills-manager'
+import type {
+  AssistantEvent,
+  ContentBlock,
+  Message,
+  ResultEvent,
+  StreamEvent,
+  TextBlock,
+  ToolResultEvent,
+  ToolUseBlock,
+  ToolUseEvent,
+} from '../types'
 
 const log = createLogger('session', { timestamp: true })
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
   return String(error)
+}
+
+function generateId(): string {
+  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
 
 export const SOCKET_PATH = '/__claude_devtools_socket'
@@ -50,9 +70,29 @@ export class ClaudeSession {
   private io: SocketServer | null = null
   private isProcessing: boolean = false
   private continueSession: boolean = false
+  private historyManager: HistoryManager
+  private docsManager: DocsManager
+  private commandsManager: CommandsManager
+  private agentsManager: AgentsManager
+  private skillsManager: SkillsManager
+
+  // Claude CLI session ID (in-memory only, lost on hot-reload)
+  private claudeSessionId: string | null = null
+
+  // Stream parsing state
+  private parseBuffer: string = ''
+  private currentContentBlocks: ContentBlock[] = []
+  private currentMessageId: string = ''
+  private currentModel: string = ''
+  private accumulatedText: string = ''
 
   constructor(config: ClaudeSessionConfig) {
     this.config = config
+    this.historyManager = new HistoryManager(config.rootDir)
+    this.docsManager = new DocsManager(config.rootDir)
+    this.commandsManager = new CommandsManager(config.rootDir)
+    this.agentsManager = new AgentsManager(config.rootDir)
+    this.skillsManager = new SkillsManager(config.rootDir)
   }
 
   attachSocketIO(io: SocketServer) {
@@ -67,6 +107,10 @@ export class ClaudeSession {
         processing: this.isProcessing,
       })
 
+      // Send current conversation on connect
+      const conversation = this.historyManager.getActiveConversation()
+      socket.emit('history:loaded', conversation)
+
       socket.on('message:send', (message: string) => {
         log('Message received', { length: message.length, preview: message.substring(0, 100) })
         this.sendMessage(message)
@@ -75,7 +119,45 @@ export class ClaudeSession {
       socket.on('session:reset', () => {
         log('Resetting session (new conversation)')
         this.continueSession = false
+        this.claudeSessionId = null // Clear in-memory session
+        // Note: resetSession() creates new conversation, so old session ID is preserved in old conversation
+        const conversation = this.historyManager.resetSession()
         this.io?.emit('session:status', { active: true, processing: false })
+        this.io?.emit('history:loaded', conversation)
+      })
+
+      // History management
+      socket.on('history:load', () => {
+        const conversation = this.historyManager.getActiveConversation()
+        socket.emit('history:loaded', conversation)
+      })
+
+      socket.on('history:list', () => {
+        const conversations = this.historyManager.getConversations()
+        socket.emit('history:list', conversations)
+      })
+
+      socket.on('history:switch', (id: string) => {
+        const conversation = this.historyManager.setActiveConversation(id)
+        if (conversation) {
+          // Reset in-memory session state, will load from file on next message
+          this.continueSession = false
+          this.claudeSessionId = conversation.claudeSessionId || null
+          log('Switched to conversation', {
+            id: conversation.id,
+            claudeSessionId: this.claudeSessionId,
+            messageCount: conversation.messages.length,
+          })
+          socket.emit('history:switched', conversation)
+        }
+      })
+
+      socket.on('history:delete', (id: string) => {
+        const success = this.historyManager.deleteConversation(id)
+        socket.emit('history:deleted', { id, success })
+        // Send updated list
+        const conversations = this.historyManager.getConversations()
+        socket.emit('history:list', conversations)
       })
 
       // MCP Management
@@ -95,6 +177,264 @@ export class ClaudeSession {
         this.removeMcpServer(data, socket)
       })
 
+      // Docs Management
+      socket.on('docs:list', () => {
+        log('Docs list requested')
+        const files = this.docsManager.getDocFiles()
+        socket.emit('docs:list', files)
+      })
+
+      socket.on('docs:get', (path: string) => {
+        log('Docs get requested', { path })
+        const file = this.docsManager.getDocFile(path)
+        socket.emit('docs:file', file)
+      })
+
+      socket.on('docs:save', (data: { path: string, content: string }) => {
+        log('Docs save requested', { path: data.path })
+        try {
+          const file = this.docsManager.saveDocFile(data.path, data.content)
+          socket.emit('docs:saved', { success: true, file })
+          // Send updated list
+          const files = this.docsManager.getDocFiles()
+          socket.emit('docs:list', files)
+        }
+        catch (error) {
+          socket.emit('docs:saved', { success: false, error: String(error) })
+        }
+      })
+
+      socket.on('docs:delete', (path: string) => {
+        log('Docs delete requested', { path })
+        const success = this.docsManager.deleteDocFile(path)
+        socket.emit('docs:deleted', { path, success })
+        // Send updated list
+        const files = this.docsManager.getDocFiles()
+        socket.emit('docs:list', files)
+      })
+
+      // CLAUDE.md Management
+      socket.on('claudemd:get', () => {
+        log('CLAUDE.md get requested')
+        const data = this.docsManager.getClaudeMd()
+        socket.emit('claudemd:data', data)
+      })
+
+      socket.on('claudemd:save', (content: string) => {
+        log('CLAUDE.md save requested')
+        try {
+          const data = this.docsManager.saveClaudeMd(content)
+          socket.emit('claudemd:saved', { success: true, ...data })
+        }
+        catch (error) {
+          socket.emit('claudemd:saved', { success: false, error: String(error) })
+        }
+      })
+
+      // LLMS Sources Management
+      socket.on('llms:list', () => {
+        log('LLMS list requested')
+        const sources = this.docsManager.getLlmsSources()
+        socket.emit('llms:list', sources)
+      })
+
+      socket.on('llms:add', (data: { url: string, title?: string, description?: string }) => {
+        log('LLMS add requested', { url: data.url })
+        try {
+          const source = this.docsManager.addLlmsSource(data.url, data.title, data.description)
+          socket.emit('llms:added', { success: true, source })
+          // Send updated list
+          const sources = this.docsManager.getLlmsSources()
+          socket.emit('llms:list', sources)
+        }
+        catch (error) {
+          socket.emit('llms:added', { success: false, error: String(error) })
+        }
+      })
+
+      socket.on('llms:remove', (url: string) => {
+        log('LLMS remove requested', { url })
+        const success = this.docsManager.removeLlmsSource(url)
+        socket.emit('llms:removed', { url, success })
+        // Send updated list
+        const sources = this.docsManager.getLlmsSources()
+        socket.emit('llms:list', sources)
+      })
+
+      socket.on('llms:update', (data: { url: string, title?: string, description?: string }) => {
+        log('LLMS update requested', { url: data.url })
+        const source = this.docsManager.updateLlmsSource(data.url, {
+          title: data.title,
+          description: data.description,
+        })
+        socket.emit('llms:updated', { success: !!source, source })
+      })
+
+      // Commands (Slash Commands / Skills) Management
+      socket.on('commands:list', () => {
+        log('Commands list requested')
+        const commands = this.commandsManager.getCommands()
+        socket.emit('commands:list', commands)
+      })
+
+      socket.on('commands:get', (name: string) => {
+        log('Command get requested', { name })
+        const command = this.commandsManager.getCommand(name)
+        socket.emit('commands:data', command)
+      })
+
+      socket.on('commands:save', (data: {
+        name: string
+        content: string
+        description?: string
+        allowedTools?: string[]
+        disableModelInvocation?: boolean
+      }) => {
+        log('Command save requested', { name: data.name })
+        try {
+          const command = this.commandsManager.saveCommand(data.name, data.content, {
+            description: data.description,
+            allowedTools: data.allowedTools,
+            disableModelInvocation: data.disableModelInvocation,
+          })
+          socket.emit('commands:saved', { success: true, command })
+          // Send updated list
+          const commands = this.commandsManager.getCommands()
+          socket.emit('commands:list', commands)
+        }
+        catch (error) {
+          socket.emit('commands:saved', { success: false, error: String(error) })
+        }
+      })
+
+      socket.on('commands:delete', (name: string) => {
+        log('Command delete requested', { name })
+        const success = this.commandsManager.deleteCommand(name)
+        socket.emit('commands:deleted', { name, success })
+        // Send updated list
+        const commands = this.commandsManager.getCommands()
+        socket.emit('commands:list', commands)
+      })
+
+      // Agents (Subagents) Management
+      socket.on('agents:list', () => {
+        log('Agents list requested')
+        const agents = this.agentsManager.getAgents()
+        socket.emit('agents:list', agents)
+      })
+
+      socket.on('agents:get', (name: string) => {
+        log('Agent get requested', { name })
+        const agent = this.agentsManager.getAgent(name)
+        socket.emit('agents:data', agent)
+      })
+
+      socket.on('agents:save', (data: {
+        name: string
+        description: string
+        prompt: string
+        model?: string
+        tools?: string[]
+        disallowedTools?: string[]
+        permissionMode?: 'default' | 'acceptEdits' | 'dontAsk' | 'bypassPermissions' | 'plan'
+        skills?: string[]
+      }) => {
+        log('Agent save requested', { name: data.name })
+        try {
+          const agent = this.agentsManager.saveAgent({
+            name: data.name,
+            description: data.description,
+            prompt: data.prompt,
+            model: data.model,
+            tools: data.tools,
+            disallowedTools: data.disallowedTools,
+            permissionMode: data.permissionMode,
+            skills: data.skills,
+          })
+          socket.emit('agents:saved', { success: true, agent })
+          // Send updated list
+          const agents = this.agentsManager.getAgents()
+          socket.emit('agents:list', agents)
+        }
+        catch (error) {
+          socket.emit('agents:saved', { success: false, error: String(error) })
+        }
+      })
+
+      socket.on('agents:delete', (name: string) => {
+        log('Agent delete requested', { name })
+        const success = this.agentsManager.deleteAgent(name)
+        socket.emit('agents:deleted', { name, success })
+        // Send updated list
+        const agents = this.agentsManager.getAgents()
+        socket.emit('agents:list', agents)
+      })
+
+      // ===== SKILLS HANDLERS =====
+      socket.on('skills:list', () => {
+        log('Skills list requested')
+        const skills = this.skillsManager.getSkills()
+        socket.emit('skills:list', skills)
+      })
+
+      socket.on('skills:get', (name: string) => {
+        log('Skill get requested', { name })
+        const skill = this.skillsManager.getSkill(name)
+        socket.emit('skills:get', skill)
+      })
+
+      socket.on('skills:save', (data: {
+        name: string
+        description: string
+        content: string
+        argumentHint?: string
+        disableModelInvocation?: boolean
+        userInvocable?: boolean
+        allowedTools?: string[]
+        model?: string
+        context?: 'fork'
+        agent?: string
+      }) => {
+        log('Skill save requested', { name: data.name })
+        try {
+          const skill = this.skillsManager.saveSkill({
+            name: data.name,
+            description: data.description,
+            content: data.content,
+            argumentHint: data.argumentHint,
+            disableModelInvocation: data.disableModelInvocation,
+            userInvocable: data.userInvocable,
+            allowedTools: data.allowedTools,
+            model: data.model,
+            context: data.context,
+            agent: data.agent,
+          })
+          socket.emit('skills:saved', { success: true, skill })
+          // Send updated list
+          const skills = this.skillsManager.getSkills()
+          socket.emit('skills:list', skills)
+        }
+        catch (error) {
+          socket.emit('skills:saved', { success: false, error: getErrorMessage(error) })
+        }
+      })
+
+      // Get skill names only (for agent skills selector)
+      socket.on('skills:names', () => {
+        log('Skill names requested')
+        const names = this.skillsManager.getSkillNames()
+        socket.emit('skills:names', names)
+      })
+
+      socket.on('skills:delete', (name: string) => {
+        log('Skill delete requested', { name })
+        const success = this.skillsManager.deleteSkill(name)
+        socket.emit('skills:deleted', { name, success })
+        // Send updated list
+        const skills = this.skillsManager.getSkills()
+        socket.emit('skills:list', skills)
+      })
+
       socket.on('disconnect', () => {
         log('Client disconnected', { socketId: socket.id })
       })
@@ -105,6 +445,194 @@ export class ClaudeSession {
     this.io?.close()
   }
 
+  private resetStreamState() {
+    this.parseBuffer = ''
+    this.currentContentBlocks = []
+    this.currentMessageId = generateId()
+    this.currentModel = ''
+    this.accumulatedText = ''
+  }
+
+  private buildSystemPrompt(): string | null {
+    const sections: string[] = []
+
+    // Add LLMS sources information
+    // Note: Claude automatically reads .claude/docs/ so we don't need to include those
+    const llmsSources = this.docsManager.getLlmsSources()
+    if (llmsSources.length > 0) {
+      sections.push('=== EXTERNAL DOCUMENTATION SOURCES ===')
+      sections.push('The following llms.txt sources are configured for this project.')
+      sections.push('You can fetch these URLs to get documentation context when needed:')
+      sections.push('')
+      for (const source of llmsSources) {
+        const title = source.title || source.domain
+        const desc = source.description ? ` - ${source.description}` : ''
+        sections.push(`- ${title}${desc}`)
+        sections.push(`  URL: ${source.url}`)
+      }
+      sections.push('')
+    }
+
+    // Add conversation history if recovering context
+    if (this.historyManager.hasHistoryForRecovery()) {
+      const historyPrompt = this.historyManager.formatHistoryForSystemPrompt()
+      if (historyPrompt) {
+        sections.push(historyPrompt)
+      }
+    }
+
+    if (sections.length === 0) {
+      return null
+    }
+
+    return sections.join('\n')
+  }
+
+  private parseStreamChunk(data: string): StreamEvent[] {
+    this.parseBuffer += data
+    const events: StreamEvent[] = []
+
+    // Split by newlines, keeping incomplete lines in buffer
+    const lines = this.parseBuffer.split('\n')
+    this.parseBuffer = lines.pop() || '' // Keep last incomplete line
+
+    for (const line of lines) {
+      if (line.trim()) {
+        try {
+          const event = JSON.parse(line) as StreamEvent
+          events.push(event)
+        }
+        catch (e) {
+          log('Failed to parse stream event', { line: line.substring(0, 100), error: e })
+        }
+      }
+    }
+
+    return events
+  }
+
+  private processStreamEvent(event: StreamEvent): void {
+    switch (event.type) {
+      case 'system':
+        // System messages from Claude Code CLI
+        log('System event', { subtype: (event as { subtype?: string }).subtype })
+        break
+
+      case 'assistant': {
+        // Assistant message with content blocks
+        const assistantEvent = event as AssistantEvent
+        this.currentMessageId = assistantEvent.message.id
+        this.currentModel = assistantEvent.message.model
+
+        // Process content blocks from assistant message
+        for (const block of assistantEvent.message.content) {
+          if (block.type === 'text' && block.text) {
+            const textBlock: TextBlock = {
+              type: 'text',
+              text: block.text,
+            }
+            this.currentContentBlocks.push(textBlock)
+            this.accumulatedText += block.text
+
+            // Emit for real-time UI update
+            this.io?.emit('output:chunk', block.text)
+            this.io?.emit('stream:text_delta', {
+              index: this.currentContentBlocks.length - 1,
+              text: block.text,
+            })
+          }
+          else if (block.type === 'tool_use' && block.id && block.name) {
+            const toolBlock: ToolUseBlock = {
+              type: 'tool_use',
+              id: block.id,
+              name: block.name,
+              input: block.input || {},
+            }
+            this.currentContentBlocks.push(toolBlock)
+
+            this.io?.emit('stream:tool_use', {
+              id: block.id,
+              name: block.name,
+              input: block.input || {},
+            })
+          }
+        }
+        break
+      }
+
+      case 'tool_use': {
+        // Standalone tool use event
+        const toolEvent = event as ToolUseEvent
+        const toolBlock: ToolUseBlock = {
+          type: 'tool_use',
+          id: toolEvent.tool_use_id,
+          name: toolEvent.name,
+          input: toolEvent.input,
+        }
+        this.currentContentBlocks.push(toolBlock)
+
+        this.io?.emit('stream:tool_use', {
+          id: toolEvent.tool_use_id,
+          name: toolEvent.name,
+          input: toolEvent.input,
+        })
+        break
+      }
+
+      case 'tool_result': {
+        // Tool result event
+        const resultEvent = event as ToolResultEvent
+        this.currentContentBlocks.push({
+          type: 'tool_result',
+          tool_use_id: resultEvent.tool_use_id,
+          content: resultEvent.content,
+          is_error: resultEvent.is_error,
+        })
+
+        this.io?.emit('stream:tool_result', {
+          tool_use_id: resultEvent.tool_use_id,
+          name: resultEvent.name,
+          content: resultEvent.content,
+          is_error: resultEvent.is_error,
+        })
+        break
+      }
+
+      case 'result': {
+        // Final result from Claude Code CLI
+        const resultEvent = event as ResultEvent
+        log('Result event', {
+          subtype: resultEvent.subtype,
+          cost: resultEvent.cost_usd,
+          duration: resultEvent.duration_ms,
+          session_id: resultEvent.session_id,
+        })
+
+        // Save session_id for --resume (both in-memory and to file)
+        if (resultEvent.session_id) {
+          this.claudeSessionId = resultEvent.session_id
+          this.historyManager.setClaudeSessionId(resultEvent.session_id)
+          log('Saved Claude session ID', { sessionId: resultEvent.session_id })
+        }
+
+        // Emit result metadata
+        this.io?.emit('stream:result', {
+          subtype: resultEvent.subtype,
+          result: resultEvent.result,
+          error: resultEvent.error,
+          session_id: resultEvent.session_id,
+          cost_usd: resultEvent.cost_usd,
+          duration_ms: resultEvent.duration_ms,
+          is_error: resultEvent.is_error,
+        })
+        break
+      }
+
+      default:
+        log('Unknown event type', { type: event.type })
+    }
+  }
+
   private sendMessage(message: string) {
     if (this.isProcessing) {
       log('Already processing, ignoring message')
@@ -112,18 +640,53 @@ export class ClaudeSession {
     }
 
     this.isProcessing = true
+    this.resetStreamState()
     this.io?.emit('session:status', { active: true, processing: true })
+
+    // Save user message to history
+    const userMessage: Message = {
+      id: generateId(),
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString(),
+    }
+    this.historyManager.addMessage(userMessage)
+
+    // Emit that we're starting a new message
+    this.io?.emit('stream:message_start', {
+      id: this.currentMessageId,
+    })
 
     const args = [
       ...this.config.args,
       '-p',
       message,
+      '--output-format', 'stream-json',
+      '--verbose',
       '--dangerously-skip-permissions',
     ]
 
-    // Add --continue flag to continue previous conversation
-    if (this.continueSession) {
-      args.push('--continue')
+    // Session continuation strategy:
+    // 1. Use --resume with session_id if available (preserves full context)
+    // 2. Otherwise, build system prompt with specs/llms info and history if available
+    // 3. Otherwise use --continue for current session continuation
+    const storedSessionId = this.claudeSessionId || this.historyManager.getClaudeSessionId()
+    if (storedSessionId) {
+      args.push('--resume', storedSessionId)
+      log('Resuming Claude session', { sessionId: storedSessionId })
+    }
+    else {
+      // Build system prompt with project context
+      const systemPrompt = this.buildSystemPrompt()
+      if (systemPrompt) {
+        args.push('--system-prompt', systemPrompt)
+        log('Using system prompt with project context', {
+          promptLength: systemPrompt.length,
+        })
+      }
+      else if (this.continueSession) {
+        args.push('--continue')
+      }
     }
 
     log('Spawning Claude process', { command: this.config.command, args, cwd: this.config.rootDir })
@@ -143,7 +706,11 @@ export class ClaudeSession {
     child.stdout?.on('data', (data) => {
       const chunk = data.toString()
       log('stdout chunk', { length: chunk.length })
-      this.io?.emit('output:chunk', chunk)
+
+      const events = this.parseStreamChunk(chunk)
+      for (const event of events) {
+        this.processStreamEvent(event)
+      }
     })
 
     child.stderr?.on('data', (data) => {
@@ -159,6 +726,11 @@ export class ClaudeSession {
       this.io?.emit('session:status', { active: true, processing: false })
     })
 
+    // Handle stdin errors (EPIPE when process exits early)
+    child.stdin?.on('error', (error) => {
+      log('stdin error (process may have exited)', { error: error.message })
+    })
+
     child.on('close', (code) => {
       log('Process closed', { exitCode: code })
       this.isProcessing = false
@@ -166,17 +738,50 @@ export class ClaudeSession {
       if (code === 0) {
         // Mark that next message should continue this conversation
         this.continueSession = true
+
+        // Save assistant message to history
+        const assistantMessage: Message = {
+          id: this.currentMessageId,
+          role: 'assistant',
+          content: this.accumulatedText,
+          contentBlocks: this.currentContentBlocks.length > 0 ? [...this.currentContentBlocks] : undefined,
+          timestamp: new Date().toISOString(),
+          model: this.currentModel,
+        }
+        this.historyManager.addMessage(assistantMessage)
+
+        // Emit completion with full message data
+        this.io?.emit('stream:message_complete', {
+          id: this.currentMessageId,
+          model: this.currentModel,
+          content: this.accumulatedText,
+          contentBlocks: this.currentContentBlocks,
+        })
+
+        // Legacy event for backward compatibility
         this.io?.emit('output:complete')
       }
       else {
-        this.io?.emit('session:error', `Process exited with code ${code}`)
+        // If --resume failed, clear the session ID (both in-memory and file) and notify
+        const sessionIdWasUsed = this.claudeSessionId || this.historyManager.getClaudeSessionId()
+        if (sessionIdWasUsed) {
+          log('Clearing expired Claude session ID', { sessionId: sessionIdWasUsed })
+          this.claudeSessionId = null
+          this.historyManager.setClaudeSessionId('')
+        }
+        this.io?.emit('session:error', `Process exited with code ${code}. Session may have expired - try sending the message again.`)
       }
 
       this.io?.emit('session:status', { active: true, processing: false })
     })
 
-    // Close stdin immediately
-    child.stdin?.end()
+    // Close stdin immediately (with error handling)
+    try {
+      child.stdin?.end()
+    }
+    catch (e) {
+      log('Error closing stdin', { error: e })
+    }
   }
 
   private getMcpServers(): McpServer[] {
