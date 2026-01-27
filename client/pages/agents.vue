@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { useTunnel } from '#imports'
 
 const tunnel = useTunnel()
+const { log } = useLogger('agents')
 
 interface Agent {
   name: string
@@ -65,7 +66,7 @@ function getSocketUrl(): string {
 
 function connectSocket() {
   const url = getSocketUrl()
-  console.log('[agents-client] Connecting to socket at', url)
+  log('Connecting to socket at', url)
 
   socket.value = io(url, {
     path: '/__claude_devtools_socket',
@@ -75,24 +76,24 @@ function connectSocket() {
   })
 
   socket.value.on('connect', () => {
-    console.log('[agents-client] Connected')
+    log('Connected')
     isConnected.value = true
     loadAgents()
     loadSkillNames()
   })
 
   socket.value.on('skills:names', (names: string[]) => {
-    console.log('[agents-client] Skill names received', names)
+    log('Skill names received', names)
     availableSkills.value = names
   })
 
   socket.value.on('disconnect', () => {
-    console.log('[agents-client] Disconnected')
+    log('Disconnected')
     isConnected.value = false
   })
 
   socket.value.on('agents:list', (data: Agent[]) => {
-    console.log('[agents-client] Agents list received', data)
+    log('Agents list received', data)
     agents.value = data
     isLoading.value = false
   })

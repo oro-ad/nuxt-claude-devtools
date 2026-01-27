@@ -5,7 +5,11 @@ import type { Resolver } from '@nuxt/kit'
 const DEVTOOLS_UI_ROUTE = '/__claude-devtools'
 const DEVTOOLS_UI_LOCAL_PORT = 3300
 
-export function setupDevToolsUI(nuxt: Nuxt, resolver: Resolver) {
+export interface DevToolsUIOptions {
+  debug?: boolean
+}
+
+export function setupDevToolsUI(nuxt: Nuxt, resolver: Resolver, options: DevToolsUIOptions = {}) {
   const clientPath = resolver.resolve('./client')
   const isProductionBuild = existsSync(clientPath)
 
@@ -34,13 +38,14 @@ export function setupDevToolsUI(nuxt: Nuxt, resolver: Resolver) {
   }
 
   nuxt.hook('devtools:customTabs', (tabs) => {
+    const hash = options.debug ? '#debug=true' : ''
     tabs.push({
       name: 'claude-ai',
       title: 'AI',
       icon: 'carbon:machine-learning-model',
       view: {
         type: 'iframe',
-        src: DEVTOOLS_UI_ROUTE,
+        src: `${DEVTOOLS_UI_ROUTE}${hash}`,
       },
     })
   })

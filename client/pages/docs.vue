@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { useTunnel } from '#imports'
 
 const tunnel = useTunnel()
+const { log } = useLogger('docs')
 
 interface DocFile {
   path: string
@@ -81,7 +82,7 @@ function getSocketUrl(): string {
 
 function connectSocket() {
   const url = getSocketUrl()
-  console.log('[docs-client] Connecting to socket at', url)
+  log('Connecting to socket at', url)
 
   socket.value = io(url, {
     path: '/__claude_devtools_socket',
@@ -91,19 +92,19 @@ function connectSocket() {
   })
 
   socket.value.on('connect', () => {
-    console.log('[docs-client] Connected')
+    log('Connected')
     isConnected.value = true
     loadData()
   })
 
   socket.value.on('disconnect', () => {
-    console.log('[docs-client] Disconnected')
+    log('Disconnected')
     isConnected.value = false
   })
 
   // Docs events
   socket.value.on('docs:list', (files: DocFile[]) => {
-    console.log('[docs-client] Docs list received', files.length)
+    log('Docs list received', files.length)
     docFiles.value = files
     isLoading.value = false
   })
@@ -139,7 +140,7 @@ function connectSocket() {
 
   // LLMS events
   socket.value.on('llms:list', (sources: LlmsSource[]) => {
-    console.log('[docs-client] LLMS list received', sources.length)
+    log('LLMS list received', sources.length)
     llmsSources.value = sources
   })
 
@@ -158,7 +159,7 @@ function connectSocket() {
 
   // CLAUDE.md events
   socket.value.on('claudemd:data', (data: { content: string, exists: boolean, updatedAt: string | null }) => {
-    console.log('[docs-client] CLAUDE.md data received', data.exists)
+    log('CLAUDE.md data received', data.exists)
     claudeMdContent.value = data.content
     claudeMdExists.value = data.exists
     claudeMdUpdatedAt.value = data.updatedAt

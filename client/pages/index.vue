@@ -8,6 +8,7 @@ import type { SelectedComponent } from '~/components/ComponentContext.vue'
 
 const client = useDevtoolsClient()
 const tunnel = useTunnel()
+const { log } = useLogger('client')
 
 // Component picker state
 const selectedComponents = ref<SelectedComponent[]>([])
@@ -147,7 +148,7 @@ function getSocketUrl(): string {
 
 function connectSocket() {
   const url = getSocketUrl()
-  console.log('[claude-client] Connecting to socket at', url, 'tunnel active:', tunnel.isActive.value)
+  log('Connecting to socket at', url, 'tunnel active:', tunnel.isActive.value)
 
   socket.value = io(url, {
     path: '/__claude_devtools_socket',
@@ -157,7 +158,7 @@ function connectSocket() {
   })
 
   socket.value.on('connect', () => {
-    console.log('[claude-client] Connected to socket')
+    log('Connected to socket')
     isConnected.value = true
     // Request docs and commands lists for autocomplete
     socket.value?.emit('docs:list')
@@ -165,7 +166,7 @@ function connectSocket() {
   })
 
   socket.value.on('disconnect', () => {
-    console.log('[claude-client] Disconnected from socket')
+    log('Disconnected from socket')
     isConnected.value = false
     isSessionActive.value = false
     isProcessing.value = false
@@ -173,14 +174,14 @@ function connectSocket() {
   })
 
   socket.value.on('session:status', (status: { active: boolean, processing: boolean }) => {
-    console.log('[claude-client] Session status:', status)
+    log('Session status:', status)
     isSessionActive.value = status.active
     isProcessing.value = status.processing
   })
 
   // History events
   socket.value.on('history:loaded', (conversation: Conversation) => {
-    console.log('[claude-client] History loaded:', conversation.id, conversation.messages.length, 'messages')
+    log('History loaded:', conversation.id, conversation.messages.length, 'messages')
     activeConversationId.value = conversation.id
     messages.value = conversation.messages.map(m => ({
       ...m,
@@ -190,12 +191,12 @@ function connectSocket() {
   })
 
   socket.value.on('history:list', (convs: Conversation[]) => {
-    console.log('[claude-client] Conversations list:', convs.length)
+    log('Conversations list:', convs.length)
     conversations.value = convs
   })
 
   socket.value.on('history:switched', (conversation: Conversation) => {
-    console.log('[claude-client] Switched to conversation:', conversation.id)
+    log('Switched to conversation:', conversation.id)
     activeConversationId.value = conversation.id
     messages.value = conversation.messages.map(m => ({
       ...m,
@@ -206,29 +207,29 @@ function connectSocket() {
   })
 
   socket.value.on('history:deleted', (data: { id: string, success: boolean }) => {
-    console.log('[claude-client] Conversation deleted:', data)
+    log('Conversation deleted:', data)
   })
 
   // Docs events
   socket.value.on('docs:list', (files: DocFile[]) => {
-    console.log('[claude-client] Docs list received:', files.length)
+    log('Docs list received:', files.length)
     docs.value = files
   })
 
   // Commands events
   socket.value.on('commands:list', (cmds: SlashCommand[]) => {
-    console.log('[claude-client] Commands list received:', cmds.length)
+    log('Commands list received:', cmds.length)
     commands.value = cmds
   })
 
   // Stream events
   socket.value.on('stream:message_start', (data: { id: string }) => {
-    console.log('[claude-client] Message start:', data.id)
+    log('Message start:', data.id)
     pendingToolCalls.value.clear()
   })
 
   socket.value.on('stream:tool_use', (data: { id: string, name: string, input: Record<string, unknown> }) => {
-    console.log('[claude-client] Tool use:', data.name)
+    log('Tool use:', data.name)
     const toolBlock: ContentBlock = {
       type: 'tool_use',
       id: data.id,
@@ -254,7 +255,7 @@ function connectSocket() {
     content: string | unknown[]
     is_error?: boolean
   }) => {
-    console.log('[claude-client] Tool result:', data.tool_use_id, data.is_error ? 'ERROR' : 'OK')
+    log('Tool result:', data.tool_use_id, data.is_error ? 'ERROR' : 'OK')
     const resultBlock: ContentBlock = {
       type: 'tool_result',
       tool_use_id: data.tool_use_id,
@@ -288,7 +289,7 @@ function connectSocket() {
     content: string
     contentBlocks: ContentBlock[]
   }) => {
-    console.log('[claude-client] Message complete:', data.id)
+    log('Message complete:', data.id)
     const lastMessage = messages.value.findLast(m => m.role === 'assistant')
     if (lastMessage) {
       lastMessage.streaming = false
@@ -300,12 +301,12 @@ function connectSocket() {
   })
 
   socket.value.on('stream:result', (data: { subtype: string, cost_usd?: number, duration_ms?: number }) => {
-    console.log('[claude-client] Result:', data.subtype, 'cost:', data.cost_usd, 'duration:', data.duration_ms)
+    log('Result:', data.subtype, 'cost:', data.cost_usd, 'duration:', data.duration_ms)
   })
 
   // Legacy events (backward compatibility)
   socket.value.on('output:chunk', (chunk: string) => {
-    console.log('[claude-client] Output chunk:', chunk.length)
+    log('Output chunk:', chunk.length)
     const lastMessage = messages.value.findLast(m => m.role === 'assistant')
     if (lastMessage && lastMessage.streaming) {
       // Text delta already handled by stream:text_delta, but keep for backward compat
@@ -317,7 +318,7 @@ function connectSocket() {
   })
 
   socket.value.on('output:complete', () => {
-    console.log('[claude-client] Output complete')
+    log('Output complete')
     const lastMessage = messages.value.findLast(m => m.role === 'assistant')
     if (lastMessage) {
       lastMessage.streaming = false
@@ -325,17 +326,17 @@ function connectSocket() {
   })
 
   socket.value.on('output:error', (error: string) => {
-    console.log('[claude-client] Output error:', error)
+    log('Output error:', error)
     addMessage('system', `Error: ${error}`)
   })
 
   socket.value.on('session:error', (error: string) => {
-    console.log('[claude-client] Session error:', error)
+    log('Session error:', error)
     addMessage('system', `Session error: ${error}`)
   })
 
   socket.value.on('session:closed', (data: { exitCode: number }) => {
-    console.log('[claude-client] Session closed:', data)
+    log('Session closed:', data)
     addMessage('system', `Session ended (exit code: ${data.exitCode})`)
   })
 }
@@ -587,7 +588,7 @@ function toggleComponentPicker() {
 }
 
 function handleComponentSelected(filePath: string) {
-  console.log('[claude-client] Component selected:', filePath)
+  log('Component selected:', filePath)
 
   // Don't add duplicates
   if (selectedComponents.value.some(c => c.filePath === filePath)) {
@@ -624,7 +625,7 @@ function isClaudeTabActive(): boolean {
 
 // Setup inspector hooks when devtools connects
 onDevtoolsClientConnected((devtoolsClient) => {
-  console.log('[claude-client] DevTools client connected')
+  log('DevTools client connected')
 
   // Monkey-patch callHook to intercept host:inspector:click
   const hooks = devtoolsClient.host.hooks as { callHook: (name: string, ...args: unknown[]) => Promise<unknown> }
@@ -634,7 +635,7 @@ onDevtoolsClientConnected((devtoolsClient) => {
     // Intercept inspector click only when Claude tab is active
     if (name === 'host:inspector:click' && args[0] && isClaudeTabActive()) {
       const filePath = args[0] as string
-      console.log('[claude-client] Intercepted callHook:', name, filePath)
+      log('Intercepted callHook:', name, filePath)
 
       // Add component to context
       handleComponentSelected(filePath)
@@ -648,7 +649,7 @@ onDevtoolsClientConnected((devtoolsClient) => {
     return originalCallHook(name, ...args)
   }
 
-  console.log('[claude-client] Monkey-patched hooks.callHook')
+  log('Monkey-patched hooks.callHook')
 })
 
 function selectConversation(id: string) {

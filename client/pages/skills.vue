@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { useTunnel } from '#imports'
 
 const tunnel = useTunnel()
+const { log } = useLogger('skills')
 
 interface Skill {
   name: string
@@ -52,7 +53,7 @@ function getSocketUrl(): string {
 
 function connectSocket() {
   const url = getSocketUrl()
-  console.log('[skills-client] Connecting to socket at', url)
+  log('Connecting to socket at', url)
 
   socket.value = io(url, {
     path: '/__claude_devtools_socket',
@@ -62,18 +63,18 @@ function connectSocket() {
   })
 
   socket.value.on('connect', () => {
-    console.log('[skills-client] Connected')
+    log('Connected')
     isConnected.value = true
     loadSkills()
   })
 
   socket.value.on('disconnect', () => {
-    console.log('[skills-client] Disconnected')
+    log('Disconnected')
     isConnected.value = false
   })
 
   socket.value.on('skills:list', (data: Skill[]) => {
-    console.log('[skills-client] Skills list received', data)
+    log('Skills list received', data)
     skills.value = data
     isLoading.value = false
   })

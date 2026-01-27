@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { useTunnel } from '#imports'
 
 const tunnel = useTunnel()
+const { log } = useLogger('commands')
 
 interface SlashCommand {
   name: string
@@ -51,7 +52,7 @@ function getSocketUrl(): string {
 
 function connectSocket() {
   const url = getSocketUrl()
-  console.log('[commands-client] Connecting to socket at', url)
+  log('Connecting to socket at', url)
 
   socket.value = io(url, {
     path: '/__claude_devtools_socket',
@@ -61,18 +62,18 @@ function connectSocket() {
   })
 
   socket.value.on('connect', () => {
-    console.log('[commands-client] Connected')
+    log('Connected')
     isConnected.value = true
     loadCommands()
   })
 
   socket.value.on('disconnect', () => {
-    console.log('[commands-client] Disconnected')
+    log('Disconnected')
     isConnected.value = false
   })
 
   socket.value.on('commands:list', (data: SlashCommand[]) => {
-    console.log('[commands-client] Commands list received', data)
+    log('Commands list received', data)
     commands.value = data
     isLoading.value = false
   })

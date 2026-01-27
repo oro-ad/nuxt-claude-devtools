@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import { useTunnel } from '#imports'
 
 const tunnel = useTunnel()
+const { log } = useLogger('mcp')
 
 interface McpServer {
   name: string
@@ -42,7 +43,7 @@ function getSocketUrl(): string {
 
 function connectSocket() {
   const url = getSocketUrl()
-  console.log('[mcp-client] Connecting to socket at', url)
+  log('Connecting to socket at', url)
 
   socket.value = io(url, {
     path: '/__claude_devtools_socket',
@@ -52,18 +53,18 @@ function connectSocket() {
   })
 
   socket.value.on('connect', () => {
-    console.log('[mcp-client] Connected to socket')
+    log('Connected to socket')
     isConnected.value = true
     loadServers()
   })
 
   socket.value.on('disconnect', () => {
-    console.log('[mcp-client] Disconnected from socket')
+    log('Disconnected from socket')
     isConnected.value = false
   })
 
   socket.value.on('mcp:list', (data: McpServer[]) => {
-    console.log('[mcp-client] MCP list received', data)
+    log('MCP list received', data)
     servers.value = data
     isLoading.value = false
   })

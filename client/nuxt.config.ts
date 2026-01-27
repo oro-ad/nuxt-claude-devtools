@@ -1,7 +1,6 @@
 import { resolve } from 'pathe'
 
 export default defineNuxtConfig({
-
   modules: [
     '@nuxt/devtools-ui-kit',
     '@oro.ad/nuxt-claude-devtools-bc',

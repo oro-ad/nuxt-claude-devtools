@@ -13,6 +13,7 @@ export interface ClaudeOptions {
 
 export interface ModuleOptions {
   enabled: boolean
+  debug: boolean
   claude: ClaudeOptions
 }
 
@@ -23,6 +24,7 @@ export default defineNuxtModule<ModuleOptions>({
   },
   defaults: {
     enabled: true,
+    debug: false,
     claude: {
       command: 'claude',
       args: [],
@@ -32,6 +34,11 @@ export default defineNuxtModule<ModuleOptions>({
     // Only run in development mode
     if (!nuxt.options.dev || !options.enabled) {
       return
+    }
+
+    // Enable debug logging via environment variable (available everywhere on server)
+    if (options.debug) {
+      process.env.CLAUDE_DEVTOOLS_DEBUG = 'true'
     }
 
     const resolver = createResolver(import.meta.url)
@@ -59,6 +66,7 @@ export default defineNuxtModule<ModuleOptions>({
     nuxt.options.runtimeConfig.public.claudeDevtools = {
       socketPath: SOCKET_PATH,
       tunnelOrigin: tunnel?.origin || null,
+      debug: options?.debug || false,
     }
 
     // Add Nitro plugin for Socket.IO
@@ -72,6 +80,6 @@ export default defineNuxtModule<ModuleOptions>({
     })
 
     // Setup DevTools UI
-    setupDevToolsUI(nuxt, resolver)
+    setupDevToolsUI(nuxt, resolver, { debug: options.debug })
   },
 })
