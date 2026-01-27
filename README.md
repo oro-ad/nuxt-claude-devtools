@@ -11,6 +11,8 @@ Nuxt DevTools integration for [Claude Code](https://claude.ai/code) AI assistant
 
 - **Chat Interface** — Interactive chat with Claude AI directly in DevTools
 - **Streaming Responses** — Real-time streaming output from Claude
+- **Context Chips** — Send viewport size, browser info, and routing context with messages
+- **Component Picker** — Select Vue components from the page to add as context
 - **Session Management** — Start new conversations or continue previous ones
 - **Chat History** — Browse and restore previous conversations
 - **Skills** — Markdown-based skills to extend Claude's capabilities (`.claude/skills/<name>/SKILL.md`)
@@ -67,6 +69,7 @@ export default defineNuxtConfig({
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enabled` | `boolean` | `true` | Enable/disable the module |
+| `debug` | `boolean` | `false` | Enable debug logging in console |
 | `claude.command` | `string` | `'claude'` | Path to Claude CLI executable |
 | `claude.args` | `string[]` | `[]` | Additional arguments for Claude CLI |
 
@@ -80,6 +83,22 @@ export default defineNuxtConfig({
 4. Claude will respond with streaming output
 
 The module automatically uses `--continue` for follow-up messages within a session. Click "New Chat" to start a fresh conversation.
+
+### Context Chips
+
+Add contextual information to your messages using the chips next to the input field:
+
+| Chip | Context Provided |
+|------|------------------|
+| **Viewport** | App window dimensions (width × height) |
+| **User Agent** | Browser and OS information |
+| **Routing** | Current route path, query params, page component file |
+
+Click a chip to toggle it on/off. Active chips will include their context with your next message.
+
+### Component Picker
+
+Click "Add Component" to select Vue components directly from your running app. The component's file path will be included as context, allowing Claude to read and understand the component code.
 
 ### Skills
 
@@ -283,9 +302,21 @@ npm run lint
 │   │   ├── commands.vue       # Slash commands manager
 │   │   ├── docs.vue           # Documentation viewer
 │   │   └── mcp.vue            # MCP servers management
+│   ├── composables/
+│   │   ├── useClaudeChat.ts   # Socket, messages, session
+│   │   ├── useMessageContext.ts # Context chips logic
+│   │   ├── useVoiceInput.ts   # Speech recognition
+│   │   ├── useAutocomplete.ts # Docs/commands autocomplete
+│   │   └── useComponentPicker.ts # Component selection
 │   └── nuxt.config.ts
 └── playground/                # Development playground
 ```
+
+## Showcase
+
+Check out real-world use cases and demos at **[nuxt-claude-devtools.oro.ad](https://nuxt-claude-devtools.oro.ad/)**
+
+Have an interesting use case? We'd love to feature it! Send your story to [jobsbystr@gmail.com](mailto:jobsbystr@gmail.com).
 
 ## Security Notes
 
