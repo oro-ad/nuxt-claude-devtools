@@ -1,116 +1,96 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
-import type { Socket } from 'socket.io-client'
-import { io } from 'socket.io-client'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { onDevtoolsClientConnected, useDevtoolsClient } from '@nuxt/devtools-kit/iframe-client'
 import { useTunnel } from '#imports'
-import type { SelectedComponent } from '~/components/ComponentContext.vue'
-import type { ContextChip } from '~/components/ContextChips.vue'
-import type { MessageContextData } from '~/components/MessageContext.vue'
+import { useClaudeChat } from '~/composables/useClaudeChat'
+import { useMessageContext } from '~/composables/useMessageContext'
+import { useVoiceInput } from '~/composables/useVoiceInput'
+import { useAutocomplete } from '~/composables/useAutocomplete'
+import { useComponentPicker } from '~/composables/useComponentPicker'
 
 const client = useDevtoolsClient()
 const tunnel = useTunnel()
 const { log } = useLogger('client')
 
-// Component picker state
-const selectedComponents = ref<SelectedComponent[]>([])
-
-// Context chips state
-const contextChips = ref<ContextChip[]>([
-  { id: 'viewport', label: 'Viewport', icon: 'carbon:fit-to-screen', active: false },
-  { id: 'user-agent', label: 'User Agent', icon: 'carbon:application-web', active: false },
-  { id: 'routing', label: 'Routing', icon: 'carbon:location', active: false },
-])
-
-// Types
-interface ContentBlock {
-  type: 'text' | 'tool_use' | 'tool_result' | 'thinking'
-  text?: string
-  thinking?: string
-  id?: string
-  name?: string
-  input?: Record<string, unknown>
-  tool_use_id?: string
-  content?: string | unknown[]
-  is_error?: boolean
-}
-
-interface Message {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  contentBlocks?: ContentBlock[]
-  timestamp: Date | string
-  streaming?: boolean
-  model?: string
-}
-
-interface Conversation {
-  id: string
-  title?: string
-  messages: Message[]
-  createdAt: string
-  updatedAt: string
-  projectPath: string
-}
-
-interface DocFile {
-  path: string
-  name: string
-}
-
-interface SlashCommand {
-  name: string
-  description?: string
-}
-
-// State
-const socket = ref<Socket | null>(null)
-const messages = ref<Message[]>([])
-const conversations = ref<Conversation[]>([])
-const activeConversationId = ref<string | null>(null)
-const inputMessage = ref('')
-const isConnected = ref(false)
-const isSessionActive = ref(false)
-const isProcessing = ref(false)
+// Refs
 const messagesContainer = ref<HTMLElement | null>(null)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
-const isHistoryOpen = ref(false)
-
-// Voice input state
-const isRecording = ref(false)
-const speechRecognition = ref<SpeechRecognition | null>(null)
-const isSpeechSupported = ref(false)
-
-// Docs autocomplete state
-const docs = ref<DocFile[]>([])
-const showDocsAutocomplete = ref(false)
-const cursorPosition = ref(0)
-const docsAutocompleteRef = ref<{ handleKeydown: (e: KeyboardEvent) => boolean } | null>(null)
-
-// Commands autocomplete state
-const commands = ref<SlashCommand[]>([])
-const showCommandsAutocomplete = ref(false)
-const commandsAutocompleteRef = ref<{ handleKeydown: (e: KeyboardEvent) => boolean } | null>(null)
-
-// More menu state
+const inputMessage = ref('')
 const showMoreMenu = ref(false)
 
-// Current streaming state
-const pendingToolCalls = ref<Map<string, ContentBlock>>(new Map())
+// Composables
+const {
+  selectedComponents,
+  toggleComponentPicker,
+  removeComponent,
+  clearAllComponents,
+  setupInspectorHook,
+} = useComponentPicker(client, log as (...args: unknown[]) => void)
 
-const statusText = computed(() => {
-  if (!isConnected.value) return 'Disconnected'
-  if (isProcessing.value) return 'Processing...'
-  return 'Ready'
-})
+const {
+  contextChips,
+  toggleContextChip,
+  collectContext,
+  generateContextBlock,
+  parseMessageContext,
+} = useMessageContext(client, selectedComponents)
 
-const statusColor = computed(() => {
-  if (!isConnected.value) return 'red'
-  if (isProcessing.value) return 'blue'
-  return 'green'
-})
+const {
+  docs,
+  commands,
+  showDocsAutocomplete,
+  showCommandsAutocomplete,
+  cursorPosition,
+  checkDocsAutocomplete,
+  checkCommandsAutocomplete,
+  handleDocsSelect,
+  handleCommandSelect,
+  closeDocsAutocomplete,
+  closeCommandsAutocomplete,
+  setDocs,
+  setCommands,
+} = useAutocomplete(inputMessage, textareaRef)
 
+const {
+  isRecording,
+  isSpeechSupported,
+  initSpeechRecognition,
+  toggleVoiceInput,
+  stopRecording,
+  cleanup: cleanupVoice,
+} = useVoiceInput()
+
+const {
+  messages,
+  conversations,
+  activeConversationId,
+  isConnected,
+  isProcessing,
+  isHistoryOpen,
+  statusText,
+  statusColor,
+  connectSocket,
+  disconnect,
+  newChat,
+  sendMessage: sendChatMessage,
+  toggleHistory,
+  selectConversation,
+  deleteConversation,
+  findToolResult,
+} = useClaudeChat(
+  () => ({ isActive: tunnel.isActive.value, origin: tunnel.origin.value }),
+  {
+    log: log as (...args: unknown[]) => void,
+    onDocsReceived: setDocs,
+    onCommandsReceived: setCommands,
+  },
+)
+
+// Refs for autocomplete components
+const docsAutocompleteRef = ref<{ handleKeydown: (e: KeyboardEvent) => boolean } | null>(null)
+const commandsAutocompleteRef = ref<{ handleKeydown: (e: KeyboardEvent) => boolean } | null>(null)
+
+// UI Helpers
 function scrollToBottom() {
   nextTick(() => {
     if (messagesContainer.value) {
@@ -119,550 +99,27 @@ function scrollToBottom() {
   })
 }
 
-function generateId() {
-  return Math.random().toString(36).substring(2, 9)
-}
-
-function addMessage(role: Message['role'], content: string, streaming = false): Message {
-  const message: Message = {
-    id: generateId(),
-    role,
-    content,
-    timestamp: new Date(),
-    streaming,
-  }
-  messages.value.push(message)
-  scrollToBottom()
-  return message
-}
-
 function formatTimestamp(timestamp: Date | string): string {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
   return date.toLocaleTimeString()
 }
 
-// Context chips functions
-function toggleContextChip(id: ContextChip['id']) {
-  const chip = contextChips.value.find(c => c.id === id)
-  if (chip) {
-    chip.active = !chip.active
+function adjustTextareaHeight() {
+  const textarea = textareaRef.value
+  if (textarea) {
+    textarea.style.height = 'auto'
+    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
   }
 }
 
-// Get route from host app via devtools client
-function getHostRoute() {
-  return client.value?.host?.nuxt?.vueApp?.config?.globalProperties?.$route
-}
-
-// Get host app viewport size via DevTools client
-function getHostViewport(): { width: number, height: number } | null {
-  try {
-    // Method 1: Try to get viewport from DevTools host client
-    // The host client has access to the main app's window
-    const hostClient = client.value?.host
-    log('Host client:', hostClient ? Object.keys(hostClient) : 'null')
-
-    if (hostClient) {
-      // Try to access app's window via nuxt instance
-      const nuxtApp = hostClient.nuxt
-      log('Nuxt app keys:', nuxtApp ? Object.keys(nuxtApp) : 'null')
-
-      const appWindow = nuxtApp?.vueApp?.config?.globalProperties?.window
-      log('App window:', appWindow ? 'found' : 'null')
-
-      if (appWindow?.innerWidth) {
-        return {
-          width: appWindow.innerWidth,
-          height: appWindow.innerHeight,
-        }
-      }
-    }
-
-    // Method 2: Try window.top (topmost window in frame hierarchy)
-    if (window.top && window.top !== window) {
-      const _test = window.top.innerWidth // Test same-origin access
-      return {
-        width: window.top.innerWidth,
-        height: window.top.innerHeight,
-      }
-    }
-
-    // Method 3: Try window.parent.parent (devtools might be nested)
-    if (window.parent?.parent && window.parent.parent !== window) {
-      const _test = window.parent.parent.innerWidth
-      return {
-        width: window.parent.parent.innerWidth,
-        height: window.parent.parent.innerHeight,
-      }
-    }
-
-    // Method 4: window.parent as fallback
-    if (window.parent && window.parent !== window) {
-      const _test = window.parent.innerWidth
-      return {
-        width: window.parent.innerWidth,
-        height: window.parent.innerHeight,
-      }
-    }
-  }
-  catch {
-    // Cross-origin or other error
-  }
-  return null
-}
-
-// Collect context based on active chips
-function collectContext(): MessageContextData | null {
-  const context: MessageContextData = {}
-  let hasContext = false
-
-  // Viewport - get from host app window, not devtools iframe
-  if (contextChips.value.find(c => c.id === 'viewport')?.active) {
-    const hostViewport = getHostViewport()
-    if (hostViewport) {
-      context.viewport = hostViewport
-    }
-    else {
-      // Fallback to current window if can't access host
-      context.viewport = {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }
-    }
-    hasContext = true
-  }
-
-  // User Agent
-  if (contextChips.value.find(c => c.id === 'user-agent')?.active) {
-    context.userAgent = navigator.userAgent
-    hasContext = true
-  }
-
-  // Routing
-  if (contextChips.value.find(c => c.id === 'routing')?.active) {
-    const route = getHostRoute()
-    if (route) {
-      context.routing = {
-        path: route.path,
-        fullPath: route.fullPath,
-        query: route.query && Object.keys(route.query).length > 0 ? route.query : undefined,
-        params: route.params && Object.keys(route.params).length > 0 ? route.params : undefined,
-        name: route.name?.toString(),
-        pageComponent: route.matched?.[route.matched.length - 1]?.components?.default?.__file,
-      }
-      hasContext = true
-    }
-  }
-
-  // Components
-  if (selectedComponents.value.length > 0) {
-    context.components = selectedComponents.value.map(c => c.filePath)
-    hasContext = true
-  }
-
-  return hasContext ? context : null
-}
-
-// Generate context block for message
-function generateContextBlock(context: MessageContextData): string {
-  const parts: string[] = []
-
-  if (context.viewport) {
-    parts.push(`viewport: ${context.viewport.width}x${context.viewport.height}`)
-  }
-
-  if (context.userAgent) {
-    // Shorten user agent for readability
-    const ua = context.userAgent
-    let browser = 'Unknown'
-    if (ua.includes('Firefox/')) browser = 'Firefox'
-    else if (ua.includes('Edg/')) browser = 'Edge'
-    else if (ua.includes('Chrome/')) browser = 'Chrome'
-    else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari'
-
-    let os = 'Unknown'
-    if (ua.includes('Windows')) os = 'Windows'
-    else if (ua.includes('Mac OS')) os = 'macOS'
-    else if (ua.includes('Linux')) os = 'Linux'
-    else if (ua.includes('Android')) os = 'Android'
-    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
-
-    parts.push(`browser: ${browser} on ${os}`)
-  }
-
-  if (context.routing) {
-    parts.push(`route: ${context.routing.path}`)
-    if (context.routing.query && Object.keys(context.routing.query).length > 0) {
-      const queryStr = Object.entries(context.routing.query)
-        .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`)
-        .join('&')
-      parts.push(`query: ?${queryStr}`)
-    }
-    if (context.routing.params && Object.keys(context.routing.params).length > 0) {
-      const paramsStr = Object.entries(context.routing.params)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(', ')
-      parts.push(`params: ${paramsStr}`)
-    }
-    if (context.routing.pageComponent) {
-      parts.push(`page: ${context.routing.pageComponent}`)
-    }
-  }
-
-  if (context.components && context.components.length > 0) {
-    parts.push(`components: ${context.components.join(', ')}`)
-  }
-
-  return `[context]\n${parts.join('\n')}\n[/context]`
-}
-
-// Parse context block from message content
-function parseMessageContext(content: string): { context: MessageContextData | null, body: string } {
-  const contextBlockRegex = /^\[context\]\n([\s\S]*?)\n\[\/context\]\n?/
-  const match = content.match(contextBlockRegex)
-
-  if (!match) {
-    return { context: null, body: content }
-  }
-
-  const contextContent = match[1]
-  let body = content.slice(match[0].length)
-
-  // Remove @file references from body (they're shown in context)
-  body = body.replace(/^(@\S+\s+)+/g, '').trim()
-
-  try {
-    const context: MessageContextData = {}
-
-    // Parse viewport: 773x713
-    const viewportMatch = contextContent.match(/viewport:\s*(\d+)x(\d+)/)
-    if (viewportMatch) {
-      context.viewport = {
-        width: Number.parseInt(viewportMatch[1]),
-        height: Number.parseInt(viewportMatch[2]),
-      }
-    }
-
-    // Parse browser: Chrome on macOS
-    const browserMatch = contextContent.match(/browser:\s*(\w+)\s+on\s+(\w+)/)
-    if (browserMatch) {
-      // Store simplified user agent info
-      context.userAgent = `${browserMatch[1]} on ${browserMatch[2]}`
-    }
-
-    // Parse route: /path
-    const routeMatch = contextContent.match(/route:\s*(\S+)/)
-    if (routeMatch) {
-      context.routing = { path: routeMatch[1] }
-
-      // Parse query: ?foo=bar
-      const queryMatch = contextContent.match(/query:\s*\?(.+)/)
-      if (queryMatch) {
-        context.routing.query = {}
-        const pairs = queryMatch[1].split('&')
-        for (const pair of pairs) {
-          const [key, value] = pair.split('=')
-          if (key) context.routing.query[key] = value || ''
-        }
-      }
-
-      // Parse params: id=123
-      const paramsMatch = contextContent.match(/params:\s*(.+)/)
-      if (paramsMatch) {
-        context.routing.params = {}
-        const pairs = paramsMatch[1].split(',').map(s => s.trim())
-        for (const pair of pairs) {
-          const [key, value] = pair.split('=')
-          if (key) context.routing.params[key] = value || ''
-        }
-      }
-
-      // Parse page: /path/to/component.vue
-      const pageMatch = contextContent.match(/page:\s*(\S+)/)
-      if (pageMatch) {
-        context.routing.pageComponent = pageMatch[1]
-      }
-    }
-
-    // Parse components: /path/a.vue, /path/b.vue
-    const componentsMatch = contextContent.match(/components:\s*(.+)/)
-    if (componentsMatch) {
-      context.components = componentsMatch[1].split(',').map(s => s.trim())
-    }
-
-    return { context: Object.keys(context).length > 0 ? context : null, body }
-  }
-  catch {
-    return { context: null, body: content }
-  }
-}
-
-function findToolResult(blocks: ContentBlock[] | undefined, toolUseId: string): ContentBlock | undefined {
-  if (!blocks) return undefined
-  return blocks.find(
-    b => b.type === 'tool_result' && b.tool_use_id === toolUseId,
-  )
-}
-
-function getSocketUrl(): string {
-  if (tunnel.isActive.value && tunnel.origin.value) {
-    return tunnel.origin.value
-  }
-  return window.location.origin
-}
-
-function connectSocket() {
-  const url = getSocketUrl()
-  log('Connecting to socket at', url, 'tunnel active:', tunnel.isActive.value)
-
-  socket.value = io(url, {
-    path: '/__claude_devtools_socket',
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionAttempts: 5,
-  })
-
-  socket.value.on('connect', () => {
-    log('Connected to socket')
-    isConnected.value = true
-    // Request docs and commands lists for autocomplete
-    socket.value?.emit('docs:list')
-    socket.value?.emit('commands:list')
-  })
-
-  socket.value.on('disconnect', () => {
-    log('Disconnected from socket')
-    isConnected.value = false
-    isSessionActive.value = false
-    isProcessing.value = false
-    addMessage('system', 'Disconnected from server')
-  })
-
-  socket.value.on('session:status', (status: { active: boolean, processing: boolean }) => {
-    log('Session status:', status)
-    isSessionActive.value = status.active
-    isProcessing.value = status.processing
-  })
-
-  // History events
-  socket.value.on('history:loaded', (conversation: Conversation) => {
-    log('History loaded:', conversation.id, conversation.messages.length, 'messages')
-    activeConversationId.value = conversation.id
-    messages.value = conversation.messages.map(m => ({
-      ...m,
-      timestamp: new Date(m.timestamp),
-    }))
-    scrollToBottom()
-  })
-
-  socket.value.on('history:list', (convs: Conversation[]) => {
-    log('Conversations list:', convs.length)
-    conversations.value = convs
-  })
-
-  socket.value.on('history:switched', (conversation: Conversation) => {
-    log('Switched to conversation:', conversation.id)
-    activeConversationId.value = conversation.id
-    messages.value = conversation.messages.map(m => ({
-      ...m,
-      timestamp: new Date(m.timestamp),
-    }))
-    isHistoryOpen.value = false
-    scrollToBottom()
-  })
-
-  socket.value.on('history:deleted', (data: { id: string, success: boolean }) => {
-    log('Conversation deleted:', data)
-  })
-
-  // Docs events
-  socket.value.on('docs:list', (files: DocFile[]) => {
-    log('Docs list received:', files.length)
-    docs.value = files
-  })
-
-  // Commands events
-  socket.value.on('commands:list', (cmds: SlashCommand[]) => {
-    log('Commands list received:', cmds.length)
-    commands.value = cmds
-  })
-
-  // Stream events
-  socket.value.on('stream:message_start', (data: { id: string }) => {
-    log('Message start:', data.id)
-    pendingToolCalls.value.clear()
-  })
-
-  socket.value.on('stream:tool_use', (data: { id: string, name: string, input: Record<string, unknown> }) => {
-    log('Tool use:', data.name)
-    const toolBlock: ContentBlock = {
-      type: 'tool_use',
-      id: data.id,
-      name: data.name,
-      input: data.input,
-    }
-    pendingToolCalls.value.set(data.id, toolBlock)
-
-    // Add to last assistant message's content blocks
-    const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-    if (lastMessage) {
-      if (!lastMessage.contentBlocks) {
-        lastMessage.contentBlocks = []
-      }
-      lastMessage.contentBlocks.push(toolBlock)
-      scrollToBottom()
-    }
-  })
-
-  socket.value.on('stream:tool_result', (data: {
-    tool_use_id: string
-    name?: string
-    content: string | unknown[]
-    is_error?: boolean
-  }) => {
-    log('Tool result:', data.tool_use_id, data.is_error ? 'ERROR' : 'OK')
-    const resultBlock: ContentBlock = {
-      type: 'tool_result',
-      tool_use_id: data.tool_use_id,
-      content: data.content,
-      is_error: data.is_error,
-    }
-
-    // Add to last assistant message's content blocks
-    const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-    if (lastMessage) {
-      if (!lastMessage.contentBlocks) {
-        lastMessage.contentBlocks = []
-      }
-      lastMessage.contentBlocks.push(resultBlock)
-      scrollToBottom()
-    }
-  })
-
-  socket.value.on('stream:text_delta', (data: { index: number, text: string }) => {
-    // Update text in the UI
-    const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-    if (lastMessage && lastMessage.streaming) {
-      lastMessage.content += data.text
-      scrollToBottom()
-    }
-  })
-
-  socket.value.on('stream:message_complete', (data: {
-    id: string
-    model: string
-    content: string
-    contentBlocks: ContentBlock[]
-  }) => {
-    log('Message complete:', data.id)
-    const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-    if (lastMessage) {
-      lastMessage.streaming = false
-      lastMessage.content = data.content
-      lastMessage.contentBlocks = data.contentBlocks
-      lastMessage.model = data.model
-    }
-    pendingToolCalls.value.clear()
-  })
-
-  socket.value.on('stream:result', (data: { subtype: string, cost_usd?: number, duration_ms?: number }) => {
-    log('Result:', data.subtype, 'cost:', data.cost_usd, 'duration:', data.duration_ms)
-  })
-
-  // Legacy events (backward compatibility)
-  socket.value.on('output:chunk', (chunk: string) => {
-    log('Output chunk:', chunk.length)
-    const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-    if (lastMessage && lastMessage.streaming) {
-      // Text delta already handled by stream:text_delta, but keep for backward compat
-      // Only update if not already updated
-    }
-    else {
-      addMessage('assistant', chunk, true)
-    }
-  })
-
-  socket.value.on('output:complete', () => {
-    log('Output complete')
-    const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-    if (lastMessage) {
-      lastMessage.streaming = false
-    }
-  })
-
-  socket.value.on('output:error', (error: string) => {
-    log('Output error:', error)
-    addMessage('system', `Error: ${error}`)
-  })
-
-  socket.value.on('session:error', (error: string) => {
-    log('Session error:', error)
-    addMessage('system', `Session error: ${error}`)
-  })
-
-  socket.value.on('session:closed', (data: { exitCode: number }) => {
-    log('Session closed:', data)
-    addMessage('system', `Session ended (exit code: ${data.exitCode})`)
-  })
-}
-
-function newChat() {
-  if (socket.value) {
-    socket.value.emit('session:reset')
-    messages.value = []
-    isHistoryOpen.value = false
-  }
-}
-
-function sendMessage() {
-  if (!inputMessage.value.trim() || isProcessing.value || !isConnected.value) return
-
-  // Stop recording if active
-  if (isRecording.value && speechRecognition.value) {
-    speechRecognition.value.stop()
-    isRecording.value = false
-  }
-
-  const message = inputMessage.value.trim()
-  inputMessage.value = ''
-
-  // Reset textarea height
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
-  }
-
-  // Collect context from active chips and selected components
-  const context = collectContext()
-
-  // Build message with context block if context exists
-  let fullMessage: string = message
-  if (context) {
-    const contextBlock = generateContextBlock(context)
-    fullMessage = `${contextBlock}\n${message}`
-
-    // Also add @file references for components (for Claude to read them)
-    if (context.components && context.components.length > 0) {
-      const componentRefs = context.components.map(c => `@${c}`).join(' ')
-      fullMessage = `${contextBlock}\n${componentRefs}\n\n${message}`
-    }
-  }
-
-  // Store full message with context for display
-  addMessage('user', fullMessage)
-
-  // Add placeholder for assistant response
-  addMessage('assistant', '', true)
-
-  if (socket.value) {
-    socket.value.emit('message:send', fullMessage)
-  }
-
-  // Clear selected components after sending
-  selectedComponents.value = []
+// Input handlers
+function handleInput() {
+  adjustTextareaHeight()
+  checkDocsAutocomplete()
+  checkCommandsAutocomplete()
 }
 
 function handleKeydown(event: KeyboardEvent) {
-  // Let autocomplete handle navigation keys first
   if (showDocsAutocomplete.value && docsAutocompleteRef.value) {
     const handled = docsAutocompleteRef.value.handleKeydown(event)
     if (handled) return
@@ -679,280 +136,67 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
-// Handle input changes for autocomplete
-function handleInput() {
-  adjustTextareaHeight()
-  checkDocsAutocomplete()
-  checkCommandsAutocomplete()
-}
+function sendMessage() {
+  if (!inputMessage.value.trim() || isProcessing.value || !isConnected.value) return
 
-function checkDocsAutocomplete() {
-  const textarea = textareaRef.value
-  if (!textarea) return
+  stopRecording()
 
-  cursorPosition.value = textarea.selectionStart || 0
-  const textBeforeCursor = inputMessage.value.slice(0, cursorPosition.value)
+  const message = inputMessage.value.trim()
+  inputMessage.value = ''
 
-  // Check if we're typing @docs/
-  const match = textBeforeCursor.match(/@docs\/\S*$/)
-  showDocsAutocomplete.value = !!match
-
-  // Close commands autocomplete if docs is open
-  if (showDocsAutocomplete.value) {
-    showCommandsAutocomplete.value = false
-  }
-}
-
-function checkCommandsAutocomplete() {
-  const textarea = textareaRef.value
-  if (!textarea) return
-
-  // Don't show if docs autocomplete is open
-  if (showDocsAutocomplete.value) return
-
-  cursorPosition.value = textarea.selectionStart || 0
-  const textBeforeCursor = inputMessage.value.slice(0, cursorPosition.value)
-
-  // Check if we're typing / at start or after whitespace
-  const match = textBeforeCursor.match(/(?:^|\s)\/\S*$/)
-  showCommandsAutocomplete.value = !!match
-}
-
-function handleDocsSelect(docPath: string) {
-  const textarea = textareaRef.value
-  if (!textarea) return
-
-  const textBeforeCursor = inputMessage.value.slice(0, cursorPosition.value)
-  const textAfterCursor = inputMessage.value.slice(cursorPosition.value)
-
-  // Find where @docs/ starts
-  const match = textBeforeCursor.match(/@docs\/\S*$/)
-  if (match) {
-    const startIndex = textBeforeCursor.lastIndexOf('@docs/')
-    const newText = textBeforeCursor.slice(0, startIndex) + `@docs/${docPath}` + textAfterCursor
-    inputMessage.value = newText
-
-    // Move cursor after inserted text
-    nextTick(() => {
-      const newCursorPos = startIndex + `@docs/${docPath}`.length
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-      textarea.focus()
-    })
+  if (textareaRef.value) {
+    textareaRef.value.style.height = 'auto'
   }
 
-  showDocsAutocomplete.value = false
-}
+  // Build message with context
+  const context = collectContext()
+  let fullMessage = message
 
-function handleCommandSelect(commandName: string) {
-  const textarea = textareaRef.value
-  if (!textarea) return
+  if (context) {
+    const contextBlock = generateContextBlock(context)
+    fullMessage = `${contextBlock}\n${message}`
 
-  const textBeforeCursor = inputMessage.value.slice(0, cursorPosition.value)
-  const textAfterCursor = inputMessage.value.slice(cursorPosition.value)
-
-  // Find where / starts (at beginning or after whitespace)
-  const match = textBeforeCursor.match(/(?:^|\s)(\/\S*)$/)
-  if (match) {
-    const slashIndex = textBeforeCursor.length - match[1].length
-    const newText = textBeforeCursor.slice(0, slashIndex) + `/${commandName} ` + textAfterCursor
-    inputMessage.value = newText
-
-    // Move cursor after inserted text
-    nextTick(() => {
-      const newCursorPos = slashIndex + `/${commandName} `.length
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-      textarea.focus()
-    })
-  }
-
-  showCommandsAutocomplete.value = false
-}
-
-function closeDocsAutocomplete() {
-  showDocsAutocomplete.value = false
-}
-
-function closeCommandsAutocomplete() {
-  showCommandsAutocomplete.value = false
-}
-
-// Auto-resize textarea
-function adjustTextareaHeight() {
-  const textarea = textareaRef.value
-  if (textarea) {
-    textarea.style.height = 'auto'
-    textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
-  }
-}
-
-// Voice input functions
-function initSpeechRecognition() {
-  const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-  if (!SpeechRecognitionAPI) {
-    isSpeechSupported.value = false
-    return
-  }
-
-  isSpeechSupported.value = true
-  const recognition = new SpeechRecognitionAPI()
-  recognition.continuous = true
-  recognition.interimResults = true
-  recognition.lang = 'ru-RU' // Default to Russian, will auto-detect
-
-  recognition.onresult = (event: SpeechRecognitionEvent) => {
-    let finalTranscript = ''
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript
-      if (event.results[i].isFinal) {
-        finalTranscript += transcript
-      }
-    }
-
-    if (finalTranscript) {
-      inputMessage.value += finalTranscript
-      nextTick(adjustTextareaHeight)
+    if (context.components && context.components.length > 0) {
+      const componentRefs = context.components.map(c => `@${c}`).join(' ')
+      fullMessage = `${contextBlock}\n${componentRefs}\n\n${message}`
     }
   }
 
-  recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-    console.error('Speech recognition error:', event.error)
-    isRecording.value = false
-  }
+  sendChatMessage(fullMessage)
+  scrollToBottom()
 
-  recognition.onend = () => {
-    isRecording.value = false
-  }
-
-  speechRecognition.value = recognition
-}
-
-function toggleVoiceInput() {
-  if (!speechRecognition.value) {
-    initSpeechRecognition()
-  }
-
-  if (!speechRecognition.value) {
-    alert('Speech recognition is not supported in this browser. Try Chrome or Edge.')
-    return
-  }
-
-  if (isRecording.value) {
-    speechRecognition.value.stop()
-    isRecording.value = false
-  }
-  else {
-    speechRecognition.value.start()
-    isRecording.value = true
-  }
-}
-
-function toggleHistory() {
-  isHistoryOpen.value = !isHistoryOpen.value
-  if (isHistoryOpen.value && socket.value) {
-    socket.value.emit('history:list')
-  }
-}
-
-// Component picker functions
-function toggleComponentPicker() {
-  if (!client.value?.host?.inspector) {
-    console.warn('[claude-client] Inspector not available')
-    return
-  }
-
-  client.value.host.inspector.toggle()
-}
-
-function handleComponentSelected(filePath: string) {
-  log('Component selected:', filePath)
-
-  // Don't add duplicates
-  if (selectedComponents.value.some(c => c.filePath === filePath)) {
-    return
-  }
-
-  // Extract component name from path
-  const parts = filePath.split('/')
-  const fileName = parts[parts.length - 1]
-  const name = fileName.replace('.vue', '')
-
-  selectedComponents.value.push({
-    filePath,
-    name,
-    timestamp: Date.now(),
-  })
-}
-
-function removeComponent(filePath: string) {
-  selectedComponents.value = selectedComponents.value.filter(c => c.filePath !== filePath)
-}
-
-function clearAllComponents() {
+  // Clear selected components
   selectedComponents.value = []
 }
 
-// Check if Claude tab is currently active
-function isClaudeTabActive(): boolean {
-  // Check if our iframe is visible and focused
-  // The route in devtools URL should contain our module name
-  const currentPath = window.location.pathname
-  return currentPath.includes('__claude-devtools')
+function handleVoiceToggle() {
+  toggleVoiceInput((transcript) => {
+    inputMessage.value += transcript
+    nextTick(adjustTextareaHeight)
+  })
 }
 
-// Setup inspector hooks when devtools connects
+// Watch messages for scroll
+watch(messages, () => {
+  scrollToBottom()
+}, { deep: true })
+
+// Setup inspector hook
 onDevtoolsClientConnected((devtoolsClient) => {
-  log('DevTools client connected')
-
-  // Monkey-patch callHook to intercept host:inspector:click
-  const hooks = devtoolsClient.host.hooks as { callHook: (name: string, ...args: unknown[]) => Promise<unknown> }
-  const originalCallHook = hooks.callHook.bind(hooks)
-
-  hooks.callHook = async (name: string, ...args: unknown[]) => {
-    // Intercept inspector click only when Claude tab is active
-    if (name === 'host:inspector:click' && args[0] && isClaudeTabActive()) {
-      const filePath = args[0] as string
-      log('Intercepted callHook:', name, filePath)
-
-      // Add component to context
-      handleComponentSelected(filePath)
-      devtoolsClient.host.inspector?.disable()
-
-      // Don't call original - prevents editor from opening
-      return
-    }
-
-    // Call original for all other hooks (or when not on Claude tab)
-    return originalCallHook(name, ...args)
-  }
-
-  log('Monkey-patched hooks.callHook')
+  setupInspectorHook(devtoolsClient)
 })
-
-function selectConversation(id: string) {
-  if (socket.value) {
-    socket.value.emit('history:switch', id)
-  }
-}
-
-function deleteConversation(id: string) {
-  if (socket.value) {
-    socket.value.emit('history:delete', id)
-  }
-}
 
 onMounted(() => {
   connectSocket()
-  initSpeechRecognition()
+  initSpeechRecognition((transcript) => {
+    inputMessage.value += transcript
+    nextTick(adjustTextareaHeight)
+  })
 })
 
 onUnmounted(() => {
-  if (socket.value) {
-    socket.value.disconnect()
-  }
-  if (speechRecognition.value && isRecording.value) {
-    speechRecognition.value.stop()
-  }
+  disconnect()
+  cleanupVoice()
 })
 </script>
 
@@ -1129,46 +373,38 @@ onUnmounted(() => {
               </span>
             </div>
 
-            <!-- Content blocks (structured display) -->
+            <!-- Content blocks -->
             <template v-if="message.contentBlocks && message.contentBlocks.length > 0">
               <template
                 v-for="(block, idx) in message.contentBlocks"
                 :key="idx"
               >
-                <!-- Text block with Markdown rendering -->
                 <MarkdownContent
                   v-if="block.type === 'text' && block.text"
                   :content="block.text"
                 />
-
-                <!-- Tool use block -->
                 <ToolCallBlock
                   v-else-if="block.type === 'tool_use'"
                   :tool-result="findToolResult(message.contentBlocks, block.id!) as any"
                   :tool-use="block as any"
                 />
-
-                <!-- Thinking block -->
                 <ThinkingBlock
                   v-else-if="block.type === 'thinking' && block.thinking"
                   :thinking="block.thinking"
                 />
               </template>
-
-              <!-- Show plain content if no text blocks but has content -->
               <MarkdownContent
                 v-if="message.content && !message.contentBlocks.some(b => b.type === 'text')"
                 :content="message.content"
               />
             </template>
 
-            <!-- Fallback: Markdown content for assistant, plain text for others -->
+            <!-- Fallback content -->
             <template v-else>
               <MarkdownContent
                 v-if="message.role === 'assistant' && message.content"
                 :content="message.content"
               />
-              <!-- User message with context parsing -->
               <template v-else-if="message.role === 'user' && message.content">
                 <MessageContext
                   v-if="parseMessageContext(message.content).context"
@@ -1178,7 +414,6 @@ onUnmounted(() => {
                   {{ parseMessageContext(message.content).body }}
                 </div>
               </template>
-              <!-- System or other messages -->
               <div
                 v-else-if="message.content"
                 class="whitespace-pre-wrap font-mono text-sm"
@@ -1215,7 +450,6 @@ onUnmounted(() => {
 
       <!-- Input -->
       <div class="p-4">
-        <!-- Component Context Display -->
         <ComponentContext
           :components="selectedComponents"
           @remove="removeComponent"
@@ -1223,7 +457,6 @@ onUnmounted(() => {
           @toggle-picker="toggleComponentPicker"
         />
 
-        <!-- Action buttons and Context Chips above input -->
         <div class="flex items-center justify-between gap-2 mb-2">
           <div class="flex items-center gap-2">
             <NButton
@@ -1240,8 +473,6 @@ onUnmounted(() => {
               Add Component
             </NButton>
           </div>
-
-          <!-- Context Chips -->
           <ContextChips
             :chips="contextChips"
             @toggle="toggleContextChip"
@@ -1250,7 +481,6 @@ onUnmounted(() => {
 
         <div class="flex gap-2 items-center">
           <div class="flex-1 relative">
-            <!-- Docs Autocomplete -->
             <DocsAutocomplete
               ref="docsAutocompleteRef"
               :cursor-position="cursorPosition"
@@ -1260,8 +490,6 @@ onUnmounted(() => {
               @close="closeDocsAutocomplete"
               @select="handleDocsSelect"
             />
-
-            <!-- Commands Autocomplete -->
             <CommandsAutocomplete
               ref="commandsAutocompleteRef"
               :commands="commands"
@@ -1271,7 +499,6 @@ onUnmounted(() => {
               @close="closeCommandsAutocomplete"
               @select="handleCommandSelect"
             />
-
             <textarea
               ref="textareaRef"
               v-model="inputMessage"
@@ -1298,15 +525,13 @@ onUnmounted(() => {
             :n="isRecording ? 'red' : 'gray'"
             :title="isRecording ? 'Stop recording' : 'Start voice input'"
             class="h-[42px] -mt-[6px]"
-            @click="toggleVoiceInput"
+            @click="handleVoiceToggle"
           >
             <NIcon :icon="isRecording ? 'carbon:stop-filled' : 'carbon:microphone'" />
           </NButton>
         </div>
         <div class="text-xs opacity-50 mt-2 flex items-center gap-3">
-          <span>Enter to send | Shift+Enter for new line{{
-            isSpeechSupported ? ' | Click mic for voice input' : ''
-          }}</span>
+          <span>Enter to send | Shift+Enter for new line{{ isSpeechSupported ? ' | Click mic for voice input' : '' }}</span>
           <span
             v-if="commands.length > 0"
             class="text-green-500/70"

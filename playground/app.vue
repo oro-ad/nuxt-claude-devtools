@@ -6,9 +6,9 @@ const features = [
     description: 'Interact with Claude AI directly from your DevTools. Ask questions, get code suggestions, and debug issues conversationally.',
   },
   {
-    icon: '🎯',
-    title: 'Component Context',
-    description: 'Select Vue components directly from the page to provide context. Claude understands your component structure and can help refactor or extend it.',
+    icon: '🌐',
+    title: 'Rich Context',
+    description: 'Automatically passes viewport size, current route, browser info, and selected components. Claude always knows what you\'re working on.',
   },
   {
     icon: '📚',
@@ -51,6 +51,8 @@ const quickStart = [
 
 const npmPackage = '@oro.ad/nuxt-claude-devtools'
 const repoUrl = 'https://github.com/oro-ad/nuxt-claude-devtools'
+const docsUrl = 'https://nuxt-claude-devtools.oro.ad/'
+const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 </script>
 
 <template>
@@ -208,8 +210,7 @@ const repoUrl = 'https://github.com/oro-ad/nuxt-claude-devtools'
         <p>
           Built with ❤️ by
           <a
-            href="https://t.me/jobsbystr"
-            target="_blank"
+            href="mailto:jobsbystr@gmail.com"
           >Simon Bystrov</a>
           ·
           Powered by
@@ -220,6 +221,14 @@ const repoUrl = 'https://github.com/oro-ad/nuxt-claude-devtools'
         </p>
         <div class="footer-links">
           <a
+            :href="docsUrl"
+            target="_blank"
+          >Docs</a>
+          <a
+            :href="nuxtModulesUrl"
+            target="_blank"
+          >Nuxt Modules</a>
+          <a
             :href="repoUrl"
             target="_blank"
           >GitHub</a>
@@ -227,10 +236,6 @@ const repoUrl = 'https://github.com/oro-ad/nuxt-claude-devtools'
             :href="`https://npmjs.com/package/${npmPackage}`"
             target="_blank"
           >npm</a>
-          <a
-            href="https://nuxt.com"
-            target="_blank"
-          >Nuxt</a>
         </div>
       </div>
     </footer>
