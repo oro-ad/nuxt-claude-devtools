@@ -5,6 +5,8 @@ import { io } from 'socket.io-client'
 import { onDevtoolsClientConnected, useDevtoolsClient } from '@nuxt/devtools-kit/iframe-client'
 import { useTunnel } from '#imports'
 import type { SelectedComponent } from '~/components/ComponentContext.vue'
+import type { ContextChip } from '~/components/ContextChips.vue'
+import type { MessageContextData } from '~/components/MessageContext.vue'
 
 const client = useDevtoolsClient()
 const tunnel = useTunnel()
@@ -12,6 +14,13 @@ const { log } = useLogger('client')
 
 // Component picker state
 const selectedComponents = ref<SelectedComponent[]>([])
+
+// Context chips state
+const contextChips = ref<ContextChip[]>([
+  { id: 'viewport', label: 'Viewport', icon: 'carbon:fit-to-screen', active: false },
+  { id: 'user-agent', label: 'User Agent', icon: 'carbon:application-web', active: false },
+  { id: 'routing', label: 'Routing', icon: 'carbon:location', active: false },
+])
 
 // Types
 interface ContentBlock {
@@ -130,6 +139,262 @@ function addMessage(role: Message['role'], content: string, streaming = false): 
 function formatTimestamp(timestamp: Date | string): string {
   const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
   return date.toLocaleTimeString()
+}
+
+// Context chips functions
+function toggleContextChip(id: ContextChip['id']) {
+  const chip = contextChips.value.find(c => c.id === id)
+  if (chip) {
+    chip.active = !chip.active
+  }
+}
+
+// Get route from host app via devtools client
+function getHostRoute() {
+  return client.value?.host?.nuxt?.vueApp?.config?.globalProperties?.$route
+}
+
+// Get host app viewport size via DevTools client
+function getHostViewport(): { width: number, height: number } | null {
+  try {
+    // Method 1: Try to get viewport from DevTools host client
+    // The host client has access to the main app's window
+    const hostClient = client.value?.host
+    log('Host client:', hostClient ? Object.keys(hostClient) : 'null')
+
+    if (hostClient) {
+      // Try to access app's window via nuxt instance
+      const nuxtApp = hostClient.nuxt
+      log('Nuxt app keys:', nuxtApp ? Object.keys(nuxtApp) : 'null')
+
+      const appWindow = nuxtApp?.vueApp?.config?.globalProperties?.window
+      log('App window:', appWindow ? 'found' : 'null')
+
+      if (appWindow?.innerWidth) {
+        return {
+          width: appWindow.innerWidth,
+          height: appWindow.innerHeight,
+        }
+      }
+    }
+
+    // Method 2: Try window.top (topmost window in frame hierarchy)
+    if (window.top && window.top !== window) {
+      const _test = window.top.innerWidth // Test same-origin access
+      return {
+        width: window.top.innerWidth,
+        height: window.top.innerHeight,
+      }
+    }
+
+    // Method 3: Try window.parent.parent (devtools might be nested)
+    if (window.parent?.parent && window.parent.parent !== window) {
+      const _test = window.parent.parent.innerWidth
+      return {
+        width: window.parent.parent.innerWidth,
+        height: window.parent.parent.innerHeight,
+      }
+    }
+
+    // Method 4: window.parent as fallback
+    if (window.parent && window.parent !== window) {
+      const _test = window.parent.innerWidth
+      return {
+        width: window.parent.innerWidth,
+        height: window.parent.innerHeight,
+      }
+    }
+  }
+  catch {
+    // Cross-origin or other error
+  }
+  return null
+}
+
+// Collect context based on active chips
+function collectContext(): MessageContextData | null {
+  const context: MessageContextData = {}
+  let hasContext = false
+
+  // Viewport - get from host app window, not devtools iframe
+  if (contextChips.value.find(c => c.id === 'viewport')?.active) {
+    const hostViewport = getHostViewport()
+    if (hostViewport) {
+      context.viewport = hostViewport
+    }
+    else {
+      // Fallback to current window if can't access host
+      context.viewport = {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }
+    }
+    hasContext = true
+  }
+
+  // User Agent
+  if (contextChips.value.find(c => c.id === 'user-agent')?.active) {
+    context.userAgent = navigator.userAgent
+    hasContext = true
+  }
+
+  // Routing
+  if (contextChips.value.find(c => c.id === 'routing')?.active) {
+    const route = getHostRoute()
+    if (route) {
+      context.routing = {
+        path: route.path,
+        fullPath: route.fullPath,
+        query: route.query && Object.keys(route.query).length > 0 ? route.query : undefined,
+        params: route.params && Object.keys(route.params).length > 0 ? route.params : undefined,
+        name: route.name?.toString(),
+        pageComponent: route.matched?.[route.matched.length - 1]?.components?.default?.__file,
+      }
+      hasContext = true
+    }
+  }
+
+  // Components
+  if (selectedComponents.value.length > 0) {
+    context.components = selectedComponents.value.map(c => c.filePath)
+    hasContext = true
+  }
+
+  return hasContext ? context : null
+}
+
+// Generate context block for message
+function generateContextBlock(context: MessageContextData): string {
+  const parts: string[] = []
+
+  if (context.viewport) {
+    parts.push(`viewport: ${context.viewport.width}x${context.viewport.height}`)
+  }
+
+  if (context.userAgent) {
+    // Shorten user agent for readability
+    const ua = context.userAgent
+    let browser = 'Unknown'
+    if (ua.includes('Firefox/')) browser = 'Firefox'
+    else if (ua.includes('Edg/')) browser = 'Edge'
+    else if (ua.includes('Chrome/')) browser = 'Chrome'
+    else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari'
+
+    let os = 'Unknown'
+    if (ua.includes('Windows')) os = 'Windows'
+    else if (ua.includes('Mac OS')) os = 'macOS'
+    else if (ua.includes('Linux')) os = 'Linux'
+    else if (ua.includes('Android')) os = 'Android'
+    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
+
+    parts.push(`browser: ${browser} on ${os}`)
+  }
+
+  if (context.routing) {
+    parts.push(`route: ${context.routing.path}`)
+    if (context.routing.query && Object.keys(context.routing.query).length > 0) {
+      const queryStr = Object.entries(context.routing.query)
+        .map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(',') : v}`)
+        .join('&')
+      parts.push(`query: ?${queryStr}`)
+    }
+    if (context.routing.params && Object.keys(context.routing.params).length > 0) {
+      const paramsStr = Object.entries(context.routing.params)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ')
+      parts.push(`params: ${paramsStr}`)
+    }
+    if (context.routing.pageComponent) {
+      parts.push(`page: ${context.routing.pageComponent}`)
+    }
+  }
+
+  if (context.components && context.components.length > 0) {
+    parts.push(`components: ${context.components.join(', ')}`)
+  }
+
+  return `[context]\n${parts.join('\n')}\n[/context]`
+}
+
+// Parse context block from message content
+function parseMessageContext(content: string): { context: MessageContextData | null, body: string } {
+  const contextBlockRegex = /^\[context\]\n([\s\S]*?)\n\[\/context\]\n?/
+  const match = content.match(contextBlockRegex)
+
+  if (!match) {
+    return { context: null, body: content }
+  }
+
+  const contextContent = match[1]
+  let body = content.slice(match[0].length)
+
+  // Remove @file references from body (they're shown in context)
+  body = body.replace(/^(@\S+\s+)+/g, '').trim()
+
+  try {
+    const context: MessageContextData = {}
+
+    // Parse viewport: 773x713
+    const viewportMatch = contextContent.match(/viewport:\s*(\d+)x(\d+)/)
+    if (viewportMatch) {
+      context.viewport = {
+        width: Number.parseInt(viewportMatch[1]),
+        height: Number.parseInt(viewportMatch[2]),
+      }
+    }
+
+    // Parse browser: Chrome on macOS
+    const browserMatch = contextContent.match(/browser:\s*(\w+)\s+on\s+(\w+)/)
+    if (browserMatch) {
+      // Store simplified user agent info
+      context.userAgent = `${browserMatch[1]} on ${browserMatch[2]}`
+    }
+
+    // Parse route: /path
+    const routeMatch = contextContent.match(/route:\s*(\S+)/)
+    if (routeMatch) {
+      context.routing = { path: routeMatch[1] }
+
+      // Parse query: ?foo=bar
+      const queryMatch = contextContent.match(/query:\s*\?(.+)/)
+      if (queryMatch) {
+        context.routing.query = {}
+        const pairs = queryMatch[1].split('&')
+        for (const pair of pairs) {
+          const [key, value] = pair.split('=')
+          if (key) context.routing.query[key] = value || ''
+        }
+      }
+
+      // Parse params: id=123
+      const paramsMatch = contextContent.match(/params:\s*(.+)/)
+      if (paramsMatch) {
+        context.routing.params = {}
+        const pairs = paramsMatch[1].split(',').map(s => s.trim())
+        for (const pair of pairs) {
+          const [key, value] = pair.split('=')
+          if (key) context.routing.params[key] = value || ''
+        }
+      }
+
+      // Parse page: /path/to/component.vue
+      const pageMatch = contextContent.match(/page:\s*(\S+)/)
+      if (pageMatch) {
+        context.routing.pageComponent = pageMatch[1]
+      }
+    }
+
+    // Parse components: /path/a.vue, /path/b.vue
+    const componentsMatch = contextContent.match(/components:\s*(.+)/)
+    if (componentsMatch) {
+      context.components = componentsMatch[1].split(',').map(s => s.trim())
+    }
+
+    return { context: Object.keys(context).length > 0 ? context : null, body }
+  }
+  catch {
+    return { context: null, body: content }
+  }
 }
 
 function findToolResult(blocks: ContentBlock[] | undefined, toolUseId: string): ContentBlock | undefined {
@@ -358,7 +623,7 @@ function sendMessage() {
     isRecording.value = false
   }
 
-  let message = inputMessage.value.trim()
+  const message = inputMessage.value.trim()
   inputMessage.value = ''
 
   // Reset textarea height
@@ -366,22 +631,34 @@ function sendMessage() {
     textareaRef.value.style.height = 'auto'
   }
 
-  // Add component context to message if any
-  if (selectedComponents.value.length > 0) {
-    const componentContext = selectedComponents.value
-      .map(c => `@${c.filePath}`)
-      .join(' ')
-    message = `${componentContext}\n\n${message}`
+  // Collect context from active chips and selected components
+  const context = collectContext()
+
+  // Build message with context block if context exists
+  let fullMessage: string = message
+  if (context) {
+    const contextBlock = generateContextBlock(context)
+    fullMessage = `${contextBlock}\n${message}`
+
+    // Also add @file references for components (for Claude to read them)
+    if (context.components && context.components.length > 0) {
+      const componentRefs = context.components.map(c => `@${c}`).join(' ')
+      fullMessage = `${contextBlock}\n${componentRefs}\n\n${message}`
+    }
   }
 
-  addMessage('user', message)
+  // Store full message with context for display
+  addMessage('user', fullMessage)
 
   // Add placeholder for assistant response
   addMessage('assistant', '', true)
 
   if (socket.value) {
-    socket.value.emit('message:send', message)
+    socket.value.emit('message:send', fullMessage)
   }
+
+  // Clear selected components after sending
+  selectedComponents.value = []
 }
 
 function handleKeydown(event: KeyboardEvent) {
@@ -891,6 +1168,17 @@ onUnmounted(() => {
                 v-if="message.role === 'assistant' && message.content"
                 :content="message.content"
               />
+              <!-- User message with context parsing -->
+              <template v-else-if="message.role === 'user' && message.content">
+                <MessageContext
+                  v-if="parseMessageContext(message.content).context"
+                  :context="parseMessageContext(message.content).context!"
+                />
+                <div class="whitespace-pre-wrap font-mono text-sm">
+                  {{ parseMessageContext(message.content).body }}
+                </div>
+              </template>
+              <!-- System or other messages -->
               <div
                 v-else-if="message.content"
                 class="whitespace-pre-wrap font-mono text-sm"
@@ -935,21 +1223,29 @@ onUnmounted(() => {
           @toggle-picker="toggleComponentPicker"
         />
 
-        <!-- Action buttons above input -->
-        <div class="flex items-center gap-2 mb-2">
-          <NButton
-            v-if="client"
-            :disabled="!isConnected"
-            :n="'purple'"
-            title="Select a component from the page to add as context"
-            @click="toggleComponentPicker"
-          >
-            <NIcon
-              class="mr-1"
-              icon="carbon:touch-1"
-            />
-            {{ 'Add Component' }}
-          </NButton>
+        <!-- Action buttons and Context Chips above input -->
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div class="flex items-center gap-2">
+            <NButton
+              v-if="client"
+              :disabled="!isConnected"
+              :n="'purple'"
+              title="Select a component from the page to add as context"
+              @click="toggleComponentPicker"
+            >
+              <NIcon
+                class="mr-1"
+                icon="carbon:touch-1"
+              />
+              Add Component
+            </NButton>
+          </div>
+
+          <!-- Context Chips -->
+          <ContextChips
+            :chips="contextChips"
+            @toggle="toggleContextChip"
+          />
         </div>
 
         <div class="flex gap-2 items-center">

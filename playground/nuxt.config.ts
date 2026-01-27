@@ -43,6 +43,6 @@ export default defineNuxtConfig({
       command: 'claude',
       args: [],
     },
-    debug: false
+    debug: true
   },
 })
