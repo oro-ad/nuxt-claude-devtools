@@ -1,15 +1,14 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { createLogger } from '../logger'
+import { MarkdownResourceManager } from './base-resource-manager'
+import { SKILL_FILE, SKILLS_SUBDIR } from './constants'
 
 const log = createLogger('skills', { timestamp: true })
 
 export interface Skill {
   name: string
   description: string
-  content: string // markdown body (instructions)
-  rawContent: string // full file content with frontmatter
-  // Optional frontmatter fields
+  content: string
+  rawContent: string
   argumentHint?: string
   disableModelInvocation?: boolean
   userInvocable?: boolean
@@ -32,162 +31,35 @@ interface SkillFrontmatter {
   'agent'?: string
 }
 
-export class SkillsManager {
-  private skillsDir: string
-
+export class SkillsManager extends MarkdownResourceManager<Skill, SkillFrontmatter> {
   constructor(projectPath: string) {
-    // Skills are stored in .claude/skills/<name>/SKILL.md
-    this.skillsDir = join(projectPath, '.claude', 'skills')
-
-    // Ensure skills directory exists
-    if (!existsSync(this.skillsDir)) {
-      mkdirSync(this.skillsDir, { recursive: true })
-      log('Created skills directory', { path: this.skillsDir })
-    }
+    super(projectPath, SKILLS_SUBDIR, log, {
+      useSubdirectories: true,
+      subdirectoryFilename: SKILL_FILE,
+    })
   }
 
-  // Parse YAML frontmatter from markdown content
-  private parseFrontmatter(content: string): { frontmatter: SkillFrontmatter, body: string } {
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/
-    const match = content.match(frontmatterRegex)
-
-    if (!match) {
-      return { frontmatter: {}, body: content.trim() }
-    }
-
-    const [, yaml, body] = match
-    const frontmatter: SkillFrontmatter = {}
-
-    // Simple YAML parsing
-    for (const line of yaml.split('\n')) {
-      const colonIndex = line.indexOf(':')
-      if (colonIndex === -1) continue
-
-      const key = line.slice(0, colonIndex).trim()
-      const value = line.slice(colonIndex + 1).trim()
-
-      switch (key) {
-        case 'name':
-          frontmatter.name = value
-          break
-        case 'description':
-          frontmatter.description = value
-          break
-        case 'argument-hint':
-          frontmatter['argument-hint'] = value
-          break
-        case 'disable-model-invocation':
-          frontmatter['disable-model-invocation'] = value === 'true'
-          break
-        case 'user-invocable':
-          frontmatter['user-invocable'] = value === 'true'
-          break
-        case 'allowed-tools':
-          frontmatter['allowed-tools'] = value
-          break
-        case 'model':
-          frontmatter.model = value
-          break
-        case 'context':
-          frontmatter.context = value
-          break
-        case 'agent':
-          frontmatter.agent = value
-          break
-      }
-    }
-
-    return { frontmatter, body: body.trim() }
+  protected buildFrontmatter(skill: Partial<Skill>): string {
+    return this.buildFrontmatterLines([
+      { key: 'name', value: skill.name },
+      { key: 'description', value: skill.description },
+      { key: 'argument-hint', value: skill.argumentHint },
+      { key: 'disable-model-invocation', value: skill.disableModelInvocation },
+      { key: 'user-invocable', value: skill.userInvocable },
+      { key: 'allowed-tools', value: skill.allowedTools },
+      { key: 'model', value: skill.model },
+      { key: 'context', value: skill.context },
+      { key: 'agent', value: skill.agent },
+    ])
   }
 
-  // Build frontmatter string
-  private buildFrontmatter(skill: Partial<Skill>): string {
-    const lines: string[] = ['---']
-
-    if (skill.name) {
-      lines.push(`name: ${skill.name}`)
-    }
-    if (skill.description) {
-      lines.push(`description: ${skill.description}`)
-    }
-    if (skill.argumentHint) {
-      lines.push(`argument-hint: ${skill.argumentHint}`)
-    }
-    if (skill.disableModelInvocation !== undefined) {
-      lines.push(`disable-model-invocation: ${skill.disableModelInvocation}`)
-    }
-    if (skill.userInvocable !== undefined) {
-      lines.push(`user-invocable: ${skill.userInvocable}`)
-    }
-    if (skill.allowedTools && skill.allowedTools.length > 0) {
-      lines.push(`allowed-tools: ${skill.allowedTools.join(', ')}`)
-    }
-    if (skill.model) {
-      lines.push(`model: ${skill.model}`)
-    }
-    if (skill.context) {
-      lines.push(`context: ${skill.context}`)
-    }
-    if (skill.agent) {
-      lines.push(`agent: ${skill.agent}`)
-    }
-
-    lines.push('---')
-    return lines.join('\n')
-  }
-
-  // Get all skills
-  getSkills(): Skill[] {
-    const skills: Skill[] = []
-
-    if (!existsSync(this.skillsDir)) return skills
-
-    const entries = readdirSync(this.skillsDir)
-    for (const entry of entries) {
-      const skillDir = join(this.skillsDir, entry)
-      const stat = statSync(skillDir)
-
-      if (!stat.isDirectory()) continue
-
-      const skillFile = join(skillDir, 'SKILL.md')
-      if (!existsSync(skillFile)) continue
-
-      const fileStat = statSync(skillFile)
-      const rawContent = readFileSync(skillFile, 'utf-8')
-      const { frontmatter, body } = this.parseFrontmatter(rawContent)
-
-      skills.push({
-        name: frontmatter.name || entry,
-        description: frontmatter.description || '',
-        content: body,
-        rawContent,
-        argumentHint: frontmatter['argument-hint'],
-        disableModelInvocation: frontmatter['disable-model-invocation'],
-        userInvocable: frontmatter['user-invocable'],
-        allowedTools: frontmatter['allowed-tools']
-          ? frontmatter['allowed-tools'].split(',').map(s => s.trim())
-          : undefined,
-        model: frontmatter.model,
-        context: frontmatter.context === 'fork' ? 'fork' : undefined,
-        agent: frontmatter.agent,
-        updatedAt: fileStat.mtime.toISOString(),
-      })
-    }
-
-    return skills.sort((a, b) => a.name.localeCompare(b.name))
-  }
-
-  // Get single skill
-  getSkill(name: string): Skill | null {
-    const skillDir = join(this.skillsDir, name)
-    const skillFile = join(skillDir, 'SKILL.md')
-
-    if (!existsSync(skillFile)) return null
-
-    const stat = statSync(skillFile)
-    const rawContent = readFileSync(skillFile, 'utf-8')
-    const { frontmatter, body } = this.parseFrontmatter(rawContent)
-
+  protected toResource(
+    name: string,
+    frontmatter: SkillFrontmatter,
+    body: string,
+    rawContent: string,
+    updatedAt: string,
+  ): Skill {
     return {
       name: frontmatter.name || name,
       description: frontmatter.description || '',
@@ -202,33 +74,24 @@ export class SkillsManager {
       model: frontmatter.model,
       context: frontmatter.context === 'fork' ? 'fork' : undefined,
       agent: frontmatter.agent,
-      updatedAt: stat.mtime.toISOString(),
+      updatedAt,
     }
   }
 
-  // Get skill names only (for agent skills selector)
+  // Public API methods
+
+  getSkills(): Skill[] {
+    return this.getAll()
+  }
+
+  getSkill(name: string): Skill | null {
+    return this.getOne(name)
+  }
+
   getSkillNames(): string[] {
-    if (!existsSync(this.skillsDir)) return []
-
-    const names: string[] = []
-    const entries = readdirSync(this.skillsDir)
-
-    for (const entry of entries) {
-      const skillDir = join(this.skillsDir, entry)
-      const stat = statSync(skillDir)
-
-      if (!stat.isDirectory()) continue
-
-      const skillFile = join(skillDir, 'SKILL.md')
-      if (existsSync(skillFile)) {
-        names.push(entry)
-      }
-    }
-
-    return names.sort()
+    return this.getAll().map(s => s.name).sort()
   }
 
-  // Create or update skill
   saveSkill(skill: {
     name: string
     description: string
@@ -241,17 +104,7 @@ export class SkillsManager {
     context?: 'fork'
     agent?: string
   }): Skill {
-    // Sanitize name (kebab-case)
-    const safeName = skill.name.replace(/[^\w-]/g, '-').toLowerCase()
-    const skillDir = join(this.skillsDir, safeName)
-    const skillFile = join(skillDir, 'SKILL.md')
-
-    // Ensure skill directory exists
-    if (!existsSync(skillDir)) {
-      mkdirSync(skillDir, { recursive: true })
-    }
-
-    // Build file content
+    const safeName = this.sanitizeName(skill.name)
     const frontmatter = this.buildFrontmatter({
       name: safeName,
       description: skill.description,
@@ -264,9 +117,7 @@ export class SkillsManager {
       agent: skill.agent,
     })
 
-    const rawContent = `${frontmatter}\n\n${skill.content}`
-    writeFileSync(skillFile, rawContent, 'utf-8')
-    log('Saved skill', { name: safeName, path: skillFile })
+    const { rawContent, updatedAt } = this.saveResource(safeName, frontmatter, skill.content)
 
     return {
       name: safeName,
@@ -280,18 +131,11 @@ export class SkillsManager {
       model: skill.model,
       context: skill.context,
       agent: skill.agent,
-      updatedAt: new Date().toISOString(),
+      updatedAt,
     }
   }
 
-  // Delete skill
   deleteSkill(name: string): boolean {
-    const skillDir = join(this.skillsDir, name)
-
-    if (!existsSync(skillDir)) return false
-
-    rmSync(skillDir, { recursive: true })
-    log('Deleted skill', { name })
-    return true
+    return this.delete(name)
   }
 }

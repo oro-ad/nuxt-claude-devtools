@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 import { useTunnel } from '#imports'
+import { SOCKET_PATH } from '../constants'
 
 const tunnel = useTunnel()
 const { log } = useLogger('docs')
@@ -85,7 +86,7 @@ function connectSocket() {
   log('Connecting to socket at', url)
 
   socket.value = io(url, {
-    path: '/__claude_devtools_socket',
+    path: SOCKET_PATH,
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,

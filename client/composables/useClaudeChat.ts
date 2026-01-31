@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 import type { ContentBlock, Conversation, DocFile, Message, SlashCommand } from './types'
+import { SOCKET_PATH } from '../constants'
 
 interface UseChatOptions {
   onDocsReceived?: (docs: DocFile[]) => void
@@ -67,7 +68,7 @@ export function useClaudeChat(
     log('Connecting to socket at', url, 'tunnel active:', tunnel.isActive)
 
     socket.value = io(url, {
-      path: '/__claude_devtools_socket',
+      path: SOCKET_PATH,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -303,6 +304,53 @@ export function useClaudeChat(
       log('System message:', data.type, data.message)
       addMessage('system', data.message)
     })
+
+    // User message from another user in collaborative mode
+    socket.value.on('stream:user_message', (data: Message & { senderId?: string }) => {
+      log('User message from:', data.senderId, data.senderNickname)
+
+      // Check if we already have this message (by id) - skip if duplicate
+      const existingById = messages.value.find(m => m.id === data.id)
+      if (existingById) {
+        // Update sender info if missing
+        if (!existingById.senderId && data.senderId) {
+          existingById.senderId = data.senderId
+          existingById.senderNickname = data.senderNickname
+        }
+        return
+      }
+
+      // Check if this is our own message that we already added locally
+      // (same senderId and content, recently added)
+      const recentOwnMessage = messages.value.find(
+        m => m.role === 'user'
+          && m.content === data.content
+          && m.senderId === data.senderId
+          && Date.now() - new Date(m.timestamp).getTime() < 5000,
+      )
+      if (recentOwnMessage) {
+        // Update our local message with server data (id, etc)
+        Object.assign(recentOwnMessage, {
+          ...data,
+          timestamp: new Date(data.timestamp),
+        })
+        return
+      }
+
+      // This is from another user - add it
+      // Insert before the streaming assistant message
+      const assistantIndex = messages.value.findIndex(m => m.role === 'assistant' && m.streaming)
+      const newMsg: Message = {
+        ...data,
+        timestamp: new Date(data.timestamp),
+      }
+      if (assistantIndex >= 0) {
+        messages.value.splice(assistantIndex, 0, newMsg)
+      }
+      else {
+        messages.value.push(newMsg)
+      }
+    })
   }
 
   function newChat() {
@@ -313,14 +361,20 @@ export function useClaudeChat(
     }
   }
 
-  function sendMessage(content: string) {
+  function sendMessage(content: string, senderId?: string, senderNickname?: string) {
     if (!content.trim() || isProcessing.value || !isConnected.value) return false
 
-    addMessage('user', content)
+    // Add user message locally (will be overwritten by server broadcast in share mode)
+    const userMsg = addMessage('user', content)
+    if (senderId) {
+      userMsg.senderId = senderId
+      userMsg.senderNickname = senderNickname
+    }
     addMessage('assistant', '', true)
 
     if (socket.value) {
-      socket.value.emit('message:send', content)
+      // Send with sender info for collaborative mode
+      socket.value.emit('message:send', senderId ? { message: content, senderId } : content)
     }
 
     return true

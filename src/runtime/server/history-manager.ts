@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createLogger } from '../logger'
 import type { Conversation, HistoryStore, Message } from '../types'
+import { DEVTOOLS_DATA_DIR, HISTORY_FILE } from './constants'
 
 const log = createLogger('history', { timestamp: true })
 
@@ -12,9 +13,9 @@ export class HistoryManager {
 
   constructor(projectPath: string) {
     this.projectPath = projectPath
-    // Store in project's .claude-devtools directory
-    const historyDir = join(projectPath, '.claude-devtools')
-    this.storePath = join(historyDir, 'history.json')
+    // Store in project's devtools data directory
+    const historyDir = join(projectPath, DEVTOOLS_DATA_DIR)
+    this.storePath = join(historyDir, HISTORY_FILE)
 
     // Ensure directory exists
     if (!existsSync(historyDir)) {

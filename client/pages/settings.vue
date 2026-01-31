@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { io } from 'socket.io-client'
 import type { Socket } from 'socket.io-client'
 import { useTunnel } from '#imports'
+import { SOCKET_PATH } from '../constants'
 
 const tunnel = useTunnel()
 const { log } = useLogger('settings')
@@ -34,7 +35,7 @@ function connectSocket() {
   log('Connecting to socket at', url)
 
   socket.value = io(url, {
-    path: '/__claude_devtools_socket',
+    path: SOCKET_PATH,
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: 5,
@@ -84,125 +85,109 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen n-bg-base overflow-hidden">
-    <!-- Header -->
-    <div class="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800">
-      <div class="flex items-center gap-3">
-        <NuxtLink to="/">
-          <NButton n="gray">
-            <NIcon icon="carbon:arrow-left" />
-          </NButton>
-        </NuxtLink>
-        <h1 class="text-xl font-bold flex items-center gap-2">
+  <PageLayout
+    title="Settings"
+    icon="carbon:settings"
+    color="purple"
+    show-connection-badge
+    :is-connected="isConnected"
+    centered
+    max-width="max-w-2xl"
+  >
+    <div class="space-y-6">
+      <!-- Critical Files Section -->
+      <div class="n-bg-active rounded-lg p-6">
+        <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
           <NIcon
-            class="text-purple"
-            icon="carbon:settings"
+            class="text-orange"
+            icon="carbon:warning"
           />
-          Settings
-        </h1>
-        <NBadge :n="isConnected ? 'green' : 'red'">
-          {{ isConnected ? 'Connected' : 'Disconnected' }}
-        </NBadge>
-      </div>
-    </div>
+          Critical Files Behavior
+        </h2>
 
-    <!-- Content -->
-    <div class="flex-1 overflow-auto p-6">
-      <div class="max-w-2xl mx-auto space-y-6">
-        <!-- Critical Files Section -->
-        <div class="n-bg-active rounded-lg p-6">
-          <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-            <NIcon
-              class="text-orange"
-              icon="carbon:warning"
-            />
-            Critical Files Behavior
-          </h2>
+        <p class="text-sm opacity-70 mb-4">
+          Configure how Claude handles changes to critical configuration files
+          (nuxt.config.ts, app.config.ts, etc.) that trigger a Nuxt restart.
+        </p>
 
-          <p class="text-sm opacity-70 mb-4">
-            Configure how Claude handles changes to critical configuration files
-            (nuxt.config.ts, app.config.ts, etc.) that trigger a Nuxt restart.
-          </p>
-
-          <div class="space-y-4">
-            <!-- Auto-confirm toggle -->
-            <div
-              class="flex items-center justify-between p-4 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:border-purple-500/50 transition-colors"
-              @click="toggleAutoConfirm"
-            >
-              <div class="flex-1">
-                <div class="font-medium mb-1">
-                  Auto-confirm critical file changes
-                </div>
-                <div class="text-sm opacity-60">
-                  <template v-if="settings.criticalFiles.autoConfirm">
-                    Claude will automatically proceed with changes without asking for confirmation.
-                  </template>
-                  <template v-else>
-                    Claude will ask for your confirmation before modifying critical files.
-                  </template>
-                </div>
+        <div class="space-y-4">
+          <!-- Auto-confirm toggle -->
+          <div
+            class="flex items-center justify-between p-4 rounded-lg border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:border-purple-500/50 transition-colors"
+            @click="toggleAutoConfirm"
+          >
+            <div class="flex-1">
+              <div class="font-medium mb-1">
+                Auto-confirm critical file changes
               </div>
-              <div class="ml-4">
+              <div class="text-sm opacity-60">
+                <template v-if="settings.criticalFiles.autoConfirm">
+                  Claude will automatically proceed with changes without asking for confirmation.
+                </template>
+                <template v-else>
+                  Claude will ask for your confirmation before modifying critical files.
+                </template>
+              </div>
+            </div>
+            <div class="ml-4">
+              <div
+                :class="[
+                  'w-12 h-6 rounded-full transition-colors relative',
+                  settings.criticalFiles.autoConfirm
+                    ? 'bg-purple-500'
+                    : 'bg-neutral-300 dark:bg-neutral-600',
+                ]"
+              >
                 <div
                   :class="[
-                    'w-12 h-6 rounded-full transition-colors relative',
-                    settings.criticalFiles.autoConfirm
-                      ? 'bg-purple-500'
-                      : 'bg-neutral-300 dark:bg-neutral-600',
+                    'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
+                    settings.criticalFiles.autoConfirm ? 'translate-x-7' : 'translate-x-1',
                   ]"
-                >
-                  <div
-                    :class="[
-                      'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-                      settings.criticalFiles.autoConfirm ? 'translate-x-7' : 'translate-x-1',
-                    ]"
-                  />
-                </div>
+                />
               </div>
             </div>
-
-            <!-- Status indicator -->
-            <div
-              v-if="isSaving"
-              class="text-sm text-purple-500 flex items-center gap-2"
-            >
-              <NIcon
-                class="animate-spin"
-                icon="carbon:rotate"
-              />
-              Saving...
-            </div>
           </div>
-        </div>
 
-        <!-- Info box -->
-        <NTip n="blue">
-          <strong>Note:</strong> Settings are stored in
-          <code class="text-xs bg-blue-500/20 px-1 rounded">.claude-devtools/settings.json</code>
-          and the CLAUDE.md instructions are updated automatically when you change settings.
-        </NTip>
-
-        <!-- Critical files list -->
-        <div class="n-bg-active rounded-lg p-6">
-          <h3 class="font-medium mb-3 flex items-center gap-2">
+          <!-- Status indicator -->
+          <div
+            v-if="isSaving"
+            class="text-sm text-purple-500 flex items-center gap-2"
+          >
             <NIcon
-              class="text-yellow"
-              icon="carbon:document"
+              class="animate-spin"
+              icon="carbon:rotate"
             />
-            Files that trigger Nuxt restart:
-          </h3>
-          <div class="flex flex-wrap gap-2">
-            <code
-              v-for="file in ['nuxt.config.ts', 'nuxt.config.js', 'app.config.ts', 'app.config.js', '.nuxtrc', 'tsconfig.json']"
-              :key="file"
-              class="text-xs px-2 py-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded"
-            >
-              {{ file }}
-            </code>
+            Saving...
           </div>
         </div>
       </div>
+
+      <!-- Info box -->
+      <NTip n="blue">
+        <strong>Note:</strong> Settings are stored in
+        <code class="text-xs bg-blue-500/20 px-1 rounded">.claude-devtools/settings.json</code>
+        and the CLAUDE.md instructions are updated automatically when you change settings.
+      </NTip>
+
+      <!-- Critical files list -->
+      <div class="n-bg-active rounded-lg p-6">
+        <h3 class="font-medium mb-3 flex items-center gap-2">
+          <NIcon
+            class="text-yellow"
+            icon="carbon:document"
+          />
+          Files that trigger Nuxt restart:
+        </h3>
+        <div class="flex flex-wrap gap-2">
+          <code
+            v-for="file in ['nuxt.config.ts', 'nuxt.config.js', 'app.config.ts', 'app.config.js', '.nuxtrc', 'tsconfig.json']"
+            :key="file"
+            class="text-xs px-2 py-1 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded"
+          >
+            {{ file }}
+          </code>
+        </div>
+      </div>
     </div>
-  </div>
+  </PageLayout>
 </template>

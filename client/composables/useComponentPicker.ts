@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import type { useDevtoolsClient } from '@nuxt/devtools-kit/iframe-client'
 import type { SelectedComponent } from '~/components/ComponentContext.vue'
+import { DEVTOOLS_UI_ROUTE } from '../constants'
 
 type DevtoolsClient = ReturnType<typeof useDevtoolsClient>
 
@@ -47,7 +48,7 @@ export function useComponentPicker(
 
   function isClaudeTabActive(): boolean {
     const currentPath = window.location.pathname
-    return currentPath.includes('__claude-devtools')
+    return currentPath.includes(DEVTOOLS_UI_ROUTE)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

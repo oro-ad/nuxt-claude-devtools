@@ -1,20 +1,19 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, join } from 'node:path'
 import { createLogger } from '../logger'
+import { MarkdownResourceManager } from './base-resource-manager'
+import { AGENTS_SUBDIR } from './constants'
 
 const log = createLogger('agents', { timestamp: true })
 
 export interface Agent {
   name: string
   description: string
-  prompt: string // markdown body (system prompt)
-  rawContent: string // full file content with frontmatter
-  // Frontmatter fields
+  prompt: string
+  rawContent: string
   tools?: string[]
   disallowedTools?: string[]
-  model?: string // sonnet, opus, haiku, inherit
+  model?: string
   permissionMode?: 'default' | 'acceptEdits' | 'dontAsk' | 'bypassPermissions' | 'plan'
-  skills?: string[] // skill names to preload
+  skills?: string[]
   updatedAt: string
 }
 
@@ -28,37 +27,18 @@ interface AgentFrontmatter {
   skills?: string[]
 }
 
-export class AgentsManager {
-  private agentsDir: string
-
+export class AgentsManager extends MarkdownResourceManager<Agent, AgentFrontmatter> {
   constructor(projectPath: string) {
-    // Agents are stored in .claude/agents/<name>.md
-    this.agentsDir = join(projectPath, '.claude', 'agents')
-
-    // Ensure agents directory exists
-    if (!existsSync(this.agentsDir)) {
-      mkdirSync(this.agentsDir, { recursive: true })
-      log('Created agents directory', { path: this.agentsDir })
-    }
+    super(projectPath, AGENTS_SUBDIR, log)
   }
 
-  // Parse YAML frontmatter from markdown content
-  private parseFrontmatter(content: string): { frontmatter: AgentFrontmatter, body: string } {
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/
-    const match = content.match(frontmatterRegex)
-
-    if (!match) {
-      return { frontmatter: {}, body: content.trim() }
-    }
-
-    const [, yaml, body] = match
-    const frontmatter: AgentFrontmatter = {}
+  protected override parseYaml(yaml: string): AgentFrontmatter {
+    const result: AgentFrontmatter = {}
 
     // Track if we're inside a skills array
     let inSkillsArray = false
     const skillsList: string[] = []
 
-    // Simple YAML parsing
     for (const line of yaml.split('\n')) {
       // Check for skills array items
       if (inSkillsArray) {
@@ -68,7 +48,6 @@ export class AgentsManager {
           continue
         }
         else if (trimmed && !trimmed.startsWith('-')) {
-          // End of array
           inSkillsArray = false
         }
         else {
@@ -84,130 +63,62 @@ export class AgentsManager {
 
       switch (key) {
         case 'name':
-          frontmatter.name = value
+          result.name = value
           break
         case 'description':
-          frontmatter.description = value
+          result.description = value
           break
         case 'tools':
-          frontmatter.tools = value
+          result.tools = value
           break
         case 'disallowedTools':
-          frontmatter.disallowedTools = value
+          result.disallowedTools = value
           break
         case 'model':
-          frontmatter.model = value
+          result.model = value
           break
         case 'permissionMode':
-          frontmatter.permissionMode = value
+          result.permissionMode = value
           break
         case 'skills':
-          // Could be inline array or multiline
           if (value) {
-            // Inline: skills: skill1, skill2
-            frontmatter.skills = value.split(',').map(s => s.trim()).filter(s => s)
+            result.skills = value.split(',').map(s => s.trim()).filter(s => s)
           }
           else {
-            // Multiline array
             inSkillsArray = true
           }
           break
       }
     }
 
-    // If we collected skills from multiline format
     if (skillsList.length > 0) {
-      frontmatter.skills = skillsList
+      result.skills = skillsList
     }
 
-    return { frontmatter, body: body.trim() }
+    return result
   }
 
-  // Build frontmatter string
-  private buildFrontmatter(agent: Partial<Agent>): string {
-    const lines: string[] = ['---']
-
-    if (agent.name) {
-      lines.push(`name: ${agent.name}`)
-    }
-    if (agent.description) {
-      lines.push(`description: ${agent.description}`)
-    }
-    if (agent.tools && agent.tools.length > 0) {
-      lines.push(`tools: ${agent.tools.join(', ')}`)
-    }
-    if (agent.disallowedTools && agent.disallowedTools.length > 0) {
-      lines.push(`disallowedTools: ${agent.disallowedTools.join(', ')}`)
-    }
-    if (agent.model) {
-      lines.push(`model: ${agent.model}`)
-    }
-    if (agent.permissionMode) {
-      lines.push(`permissionMode: ${agent.permissionMode}`)
-    }
-    if (agent.skills && agent.skills.length > 0) {
-      lines.push('skills:')
-      for (const skill of agent.skills) {
-        lines.push(`  - ${skill}`)
-      }
-    }
-
-    lines.push('---')
-    return lines.join('\n')
+  protected buildFrontmatter(agent: Partial<Agent>): string {
+    return this.buildFrontmatterWithArrays([
+      { key: 'name', value: agent.name },
+      { key: 'description', value: agent.description },
+      { key: 'tools', value: agent.tools },
+      { key: 'disallowedTools', value: agent.disallowedTools },
+      { key: 'model', value: agent.model },
+      { key: 'permissionMode', value: agent.permissionMode },
+      { key: 'skills', value: agent.skills, multiline: true },
+    ])
   }
 
-  // Get all agents
-  getAgents(): Agent[] {
-    const agents: Agent[] = []
-
-    if (!existsSync(this.agentsDir)) return agents
-
-    const entries = readdirSync(this.agentsDir)
-    for (const entry of entries) {
-      if (!entry.endsWith('.md')) continue
-
-      const fullPath = join(this.agentsDir, entry)
-      const stat = statSync(fullPath)
-
-      if (stat.isDirectory()) continue
-
-      const rawContent = readFileSync(fullPath, 'utf-8')
-      const { frontmatter, body } = this.parseFrontmatter(rawContent)
-
-      agents.push({
-        name: frontmatter.name || basename(entry, '.md'),
-        description: frontmatter.description || '',
-        prompt: body,
-        rawContent,
-        tools: frontmatter.tools
-          ? frontmatter.tools.split(',').map(s => s.trim())
-          : undefined,
-        disallowedTools: frontmatter.disallowedTools
-          ? frontmatter.disallowedTools.split(',').map(s => s.trim())
-          : undefined,
-        model: frontmatter.model,
-        permissionMode: frontmatter.permissionMode as Agent['permissionMode'],
-        skills: frontmatter.skills,
-        updatedAt: stat.mtime.toISOString(),
-      })
-    }
-
-    return agents.sort((a, b) => a.name.localeCompare(b.name))
-  }
-
-  // Get single agent
-  getAgent(name: string): Agent | null {
-    const fileName = name.endsWith('.md') ? name : `${name}.md`
-    const fullPath = join(this.agentsDir, fileName)
-
-    if (!existsSync(fullPath)) return null
-
-    const stat = statSync(fullPath)
-    const rawContent = readFileSync(fullPath, 'utf-8')
-    const { frontmatter, body } = this.parseFrontmatter(rawContent)
-
+  protected toResource(
+    name: string,
+    frontmatter: AgentFrontmatter,
+    body: string,
+    rawContent: string,
+    updatedAt: string,
+  ): Agent {
     return {
-      name: frontmatter.name || basename(fileName, '.md'),
+      name: frontmatter.name || name,
       description: frontmatter.description || '',
       prompt: body,
       rawContent,
@@ -220,11 +131,20 @@ export class AgentsManager {
       model: frontmatter.model,
       permissionMode: frontmatter.permissionMode as Agent['permissionMode'],
       skills: frontmatter.skills,
-      updatedAt: stat.mtime.toISOString(),
+      updatedAt,
     }
   }
 
-  // Create or update agent
+  // Public API methods
+
+  getAgents(): Agent[] {
+    return this.getAll()
+  }
+
+  getAgent(name: string): Agent | null {
+    return this.getOne(name)
+  }
+
   saveAgent(agent: {
     name: string
     description: string
@@ -235,12 +155,7 @@ export class AgentsManager {
     permissionMode?: Agent['permissionMode']
     skills?: string[]
   }): Agent {
-    // Sanitize name (kebab-case)
-    const safeName = agent.name.replace(/[^\w-]/g, '-').toLowerCase()
-    const fileName = `${safeName}.md`
-    const fullPath = join(this.agentsDir, fileName)
-
-    // Build file content
+    const safeName = this.sanitizeName(agent.name)
     const frontmatter = this.buildFrontmatter({
       name: safeName,
       description: agent.description,
@@ -251,9 +166,7 @@ export class AgentsManager {
       skills: agent.skills,
     })
 
-    const rawContent = `${frontmatter}\n\n${agent.prompt}`
-    writeFileSync(fullPath, rawContent, 'utf-8')
-    log('Saved agent', { name: safeName, path: fullPath })
+    const { rawContent, updatedAt } = this.saveResource(safeName, frontmatter, agent.prompt)
 
     return {
       name: safeName,
@@ -265,19 +178,11 @@ export class AgentsManager {
       model: agent.model,
       permissionMode: agent.permissionMode,
       skills: agent.skills,
-      updatedAt: new Date().toISOString(),
+      updatedAt,
     }
   }
 
-  // Delete agent
   deleteAgent(name: string): boolean {
-    const fileName = name.endsWith('.md') ? name : `${name}.md`
-    const fullPath = join(this.agentsDir, fileName)
-
-    if (!existsSync(fullPath)) return false
-
-    unlinkSync(fullPath)
-    log('Deleted agent', { name })
-    return true
+    return this.delete(name)
   }
 }

@@ -45,7 +45,7 @@ function toggleDropdown() {
   isOpen.value = !isOpen.value
 }
 
-function closeDropdown() {
+function _closeDropdown() {
   isOpen.value = false
 }
 </script>

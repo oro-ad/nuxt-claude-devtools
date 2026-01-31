@@ -6,6 +6,7 @@ import { CommandsManager } from './commands-manager'
 import { DocsManager, getCriticalFileName, isCriticalFile } from './docs-manager'
 import { HistoryManager } from './history-manager'
 import { SettingsManager } from './settings-manager'
+import { ShareManager } from './share-manager'
 import { SkillsManager } from './skills-manager'
 import type {
   AssistantEvent,
@@ -30,7 +31,8 @@ function generateId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
 
-export const SOCKET_PATH = '/__claude_devtools_socket'
+// Re-export for backward compatibility
+export { SOCKET_PATH } from '../constants'
 
 type McpTransport = 'stdio' | 'http' | 'sse'
 type McpScope = 'global' | 'local'
@@ -77,6 +79,7 @@ export class ClaudeSession {
   private agentsManager: AgentsManager
   private skillsManager: SkillsManager
   private settingsManager: SettingsManager
+  private shareManager: ShareManager
 
   // Claude CLI session ID (in-memory only, lost on hot-reload)
   private claudeSessionId: string | null = null
@@ -99,6 +102,7 @@ export class ClaudeSession {
     this.agentsManager = new AgentsManager(config.rootDir)
     this.skillsManager = new SkillsManager(config.rootDir)
     this.settingsManager = new SettingsManager(config.rootDir)
+    this.shareManager = new ShareManager(config.rootDir)
   }
 
   attachSocketIO(io: SocketServer) {
@@ -117,9 +121,12 @@ export class ClaudeSession {
       const conversation = this.historyManager.getActiveConversation()
       socket.emit('history:loaded', conversation)
 
-      socket.on('message:send', (message: string) => {
-        log('Message received', { length: message.length, preview: message.substring(0, 100) })
-        this.sendMessage(message)
+      socket.on('message:send', (data: string | { message: string, senderId?: string }) => {
+        // Support both string (legacy) and object format
+        const message = typeof data === 'string' ? data : data.message
+        const senderId = typeof data === 'string' ? undefined : data.senderId
+        log('Message received', { length: message.length, senderId, preview: message.substring(0, 100) })
+        this.sendMessage(message, senderId)
       })
 
       socket.on('session:reset', () => {
@@ -456,6 +463,49 @@ export class ClaudeSession {
         this.docsManager.ensureCriticalFilesSection(this.settingsManager.isAutoConfirmEnabled())
       })
 
+      // ===== SHARE HANDLERS =====
+      socket.on('share:register', (data: { userId: string, nickname: string }) => {
+        log('Share register requested', { userId: data.userId, nickname: data.nickname })
+
+        // Check if user already exists with this ID - just update
+        const existingUser = this.shareManager.getUser(data.userId)
+        if (existingUser) {
+          // User exists, update nickname if changed
+          const user = this.shareManager.registerUser(data.userId, data.nickname)
+          socket.emit('share:registered', user)
+          this.io?.emit('share:user_joined', user)
+          this.io?.emit('share:users', this.shareManager.getUsers())
+          return
+        }
+
+        // New user - check if nickname is available
+        if (!this.shareManager.isNicknameAvailable(data.nickname, data.userId)) {
+          socket.emit('share:nickname_taken')
+          return
+        }
+
+        // Register new user
+        const user = this.shareManager.registerUser(data.userId, data.nickname)
+        socket.emit('share:registered', user)
+
+        // Notify all clients about new user
+        this.io?.emit('share:user_joined', user)
+        this.io?.emit('share:users', this.shareManager.getUsers())
+      })
+
+      socket.on('share:get_users', () => {
+        socket.emit('share:users', this.shareManager.getUsers())
+      })
+
+      socket.on('share:is_active', () => {
+        socket.emit('share:is_active', { active: this.shareManager.isActive() })
+      })
+
+      socket.on('share:ping', (data: { userId: string }) => {
+        // Update last seen
+        this.shareManager.updateLastSeen(data.userId)
+      })
+
       socket.on('disconnect', () => {
         log('Client disconnected', { socketId: socket.id })
       })
@@ -713,7 +763,7 @@ export class ClaudeSession {
     }
   }
 
-  private sendMessage(message: string) {
+  private sendMessage(message: string, senderId?: string) {
     if (this.isProcessing) {
       log('Already processing, ignoring message')
       return
@@ -723,14 +773,22 @@ export class ClaudeSession {
     this.resetStreamState()
     this.io?.emit('session:status', { active: true, processing: true })
 
+    // Get sender nickname if available
+    const senderNickname = senderId ? this.shareManager.getUser(senderId)?.nickname : undefined
+
     // Save user message to history
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
       content: message,
       timestamp: new Date().toISOString(),
+      senderId,
+      senderNickname,
     }
     this.historyManager.addMessage(userMessage)
+
+    // Broadcast user message to all clients (for collaborative mode)
+    this.io?.emit('stream:user_message', userMessage)
 
     // Emit that we're starting a new message
     this.io?.emit('stream:message_start', {

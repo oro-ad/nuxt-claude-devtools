@@ -3,6 +3,7 @@ import { defineNitroPlugin, useRuntimeConfig } from 'nitropack/runtime'
 import { Server as Engine } from 'engine.io'
 import { Server } from 'socket.io'
 import { defineEventHandler } from 'h3'
+import { SOCKET_PATH } from '../../constants'
 import { createLogger } from '../../logger'
 import { getClaudeSessionInstance, initClaudeSession } from '../claude-session'
 
@@ -41,7 +42,7 @@ export default defineNitroPlugin((nitroApp: NitroApp) => {
     session.attachSocketIO(io)
   }
 
-  nitroApp.router.use('/__claude_devtools_socket/', defineEventHandler({
+  nitroApp.router.use(`${SOCKET_PATH}/`, defineEventHandler({
     handler(event) {
       engine.handleRequest(event.node.req, event.node.res)
       event._handled = true
@@ -62,5 +63,5 @@ export default defineNitroPlugin((nitroApp: NitroApp) => {
     },
   }))
 
-  log('Socket.IO server ready on /__claude_devtools_socket/')
+  log(`Socket.IO server ready on ${SOCKET_PATH}/`)
 })

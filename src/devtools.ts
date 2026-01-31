@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs'
 import type { Nuxt } from 'nuxt/schema'
 import type { Resolver } from '@nuxt/kit'
+import { DEVTOOLS_UI_ROUTE } from './runtime/constants'
 
-const DEVTOOLS_UI_ROUTE = '/__claude-devtools'
 const DEVTOOLS_UI_LOCAL_PORT = 3300
 
 export interface DevToolsUIOptions {

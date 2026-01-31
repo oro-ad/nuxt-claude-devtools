@@ -20,6 +20,16 @@ export interface Message {
   timestamp: Date | string
   streaming?: boolean
   model?: string
+  // Collaborative sharing
+  senderId?: string
+  senderNickname?: string
+}
+
+export interface ShareUser {
+  id: string
+  nickname: string
+  joinedAt: string
+  lastSeen: string
 }
 
 export interface Conversation {

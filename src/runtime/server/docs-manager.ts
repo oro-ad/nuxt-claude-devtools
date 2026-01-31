@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative } from 'node:path'
 import { createLogger } from '../logger'
+import { CLAUDE_DIR, CLAUDE_MD_FILE, DEVTOOLS_DATA_DIR, DOCS_SUBDIR, LLMS_FILE, SETTINGS_FILE } from './constants'
 
 const log = createLogger('docs', { timestamp: true })
 
@@ -57,8 +58,8 @@ export class DocsManager {
   constructor(projectPath: string) {
     this.projectPath = projectPath
     // Use standard Claude docs directory
-    this.docsDir = join(projectPath, '.claude', 'docs')
-    this.llmsPath = join(projectPath, '.claude-devtools', 'llms.json')
+    this.docsDir = join(projectPath, CLAUDE_DIR, DOCS_SUBDIR)
+    this.llmsPath = join(projectPath, DEVTOOLS_DATA_DIR, LLMS_FILE)
 
     // Ensure docs directory exists
     if (!existsSync(this.docsDir)) {
@@ -155,7 +156,7 @@ export class DocsManager {
   // ============ CLAUDE.md ============
 
   private get claudeMdPath(): string {
-    return join(this.projectPath, 'CLAUDE.md')
+    return join(this.projectPath, CLAUDE_MD_FILE)
   }
 
   // Get CLAUDE.md content
@@ -228,6 +229,7 @@ export class DocsManager {
 
   private generateCriticalFilesSection(autoConfirm: boolean): string {
     const filesList = CRITICAL_FILES.map(f => `- \`${f}\``).join('\n')
+    const settingsPath = `${DEVTOOLS_DATA_DIR}/${SETTINGS_FILE}`
 
     return `${DocsManager.CRITICAL_FILES_START}
 ## ⚠️ Critical Configuration Files
@@ -240,7 +242,7 @@ ${filesList}
 **BEFORE modifying ANY of these files, you MUST:**
 
 \`\`\`
-1. READ .claude-devtools/settings.json
+1. READ ${settingsPath}
 2. CHECK criticalFiles.autoConfirm value
 3. IF false OR file missing → STOP and ASK user
 4. IF true → inform user, then proceed
@@ -259,7 +261,7 @@ ${filesList}
    - All files referenced in config change must exist
    - All imports must be valid
 
-3. **Check settings file** (read \`.claude-devtools/settings.json\`)
+3. **Check settings file** (read \`${settingsPath}\`)
 
 4. **Act based on autoConfirm setting**
 
@@ -267,7 +269,7 @@ ${filesList}
 
 \`\`\`
 Step 1: Create locales/es.json           ✓ prerequisite
-Step 2: Read .claude-devtools/settings.json  ✓ check flag
+Step 2: Read ${settingsPath}  ✓ check flag
 Step 3: If autoConfirm=false → ask user
 Step 4: Update nuxt.config.ts            ✓ only after confirmation
 \`\`\`
@@ -277,8 +279,8 @@ Step 4: Update nuxt.config.ts            ✓ only after confirmation
 **autoConfirm: ${autoConfirm ? 'ENABLED' : 'DISABLED'}**
 
 ${autoConfirm
-    ? '→ Inform user about restart, no confirmation needed.'
-    : '→ MUST ask user and WAIT for explicit "yes" before proceeding.'}
+  ? '→ Inform user about restart, no confirmation needed.'
+  : '→ MUST ask user and WAIT for explicit "yes" before proceeding.'}
 
 ---
 After restart, conversation history is preserved. User can send "continue" to resume.

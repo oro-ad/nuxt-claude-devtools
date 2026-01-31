@@ -35,6 +35,9 @@ export interface Message {
   timestamp: Date | string // Allow string for JSON serialization
   streaming?: boolean
   model?: string
+  // Collaborative sharing
+  senderId?: string
+  senderNickname?: string
 }
 
 // Conversation/Session type for history storage

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { createLogger } from '../logger'
+import { DEVTOOLS_DATA_DIR, SETTINGS_FILE } from './constants'
 
 const log = createLogger('settings', { timestamp: true })
 
@@ -24,7 +25,7 @@ export class SettingsManager {
   private settings: DevToolsSettings
 
   constructor(rootDir: string) {
-    this.settingsPath = join(rootDir, '.claude-devtools', 'settings.json')
+    this.settingsPath = join(rootDir, DEVTOOLS_DATA_DIR, SETTINGS_FILE)
     this.settings = this.loadSettings()
   }
 

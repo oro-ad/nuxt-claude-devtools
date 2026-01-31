@@ -7,6 +7,7 @@ import { useMessageContext } from '~/composables/useMessageContext'
 import { useVoiceInput } from '~/composables/useVoiceInput'
 import { useAutocomplete } from '~/composables/useAutocomplete'
 import { useComponentPicker } from '~/composables/useComponentPicker'
+import { useShare } from '~/composables/useShare'
 
 const client = useDevtoolsClient()
 const tunnel = useTunnel()
@@ -61,6 +62,33 @@ const {
 } = useVoiceInput()
 
 const {
+  userId,
+  nickname,
+  users,
+  showNicknameModal,
+  isShareMode,
+  initShare,
+  copyShareLink,
+  setNickname,
+  needsNicknameImmediate,
+  needsNicknameForMessage,
+  needsNicknameForShare,
+  checkSharingStatus,
+  registerUser,
+  setupSocketListeners: setupShareListeners,
+  isOwnMessage,
+  getNicknameById: _getNicknameById,
+} = useShare({
+  getTunnelUrl: () => ({ isActive: tunnel.isActive.value, origin: tunnel.origin.value }),
+  getHostRoute: () => client.value?.host?.nuxt?.vueApp?.config?.globalProperties?.$route,
+})
+
+const shareLinkCopied = ref(false)
+const nicknameError = ref('')
+const pendingAction = ref<'share' | 'message' | null>(null) // Track what triggered nickname modal
+
+const {
+  socket,
   messages,
   conversations,
   activeConversationId,
@@ -139,6 +167,13 @@ function handleKeydown(event: KeyboardEvent) {
 function sendMessage() {
   if (!inputMessage.value.trim() || isProcessing.value || !isConnected.value) return
 
+  // If sharing is active and user has no nickname, ask for it first
+  if (needsNicknameForMessage()) {
+    pendingAction.value = 'message'
+    showNicknameModal.value = true
+    return
+  }
+
   stopRecording()
 
   const message = inputMessage.value.trim()
@@ -162,11 +197,54 @@ function sendMessage() {
     }
   }
 
-  sendChatMessage(fullMessage)
+  sendChatMessage(fullMessage, userId.value || undefined, nickname.value || undefined)
   scrollToBottom()
 
   // Clear selected components
   selectedComponents.value = []
+}
+
+async function handleShare() {
+  // If no nickname yet, show modal first
+  if (needsNicknameForShare()) {
+    pendingAction.value = 'share'
+    showNicknameModal.value = true
+    return
+  }
+
+  const success = await copyShareLink()
+  if (success) {
+    shareLinkCopied.value = true
+    setTimeout(() => {
+      shareLinkCopied.value = false
+    }, 2000)
+  }
+}
+
+function handleNicknameSubmit(name: string) {
+  setNickname(name)
+  showNicknameModal.value = false
+  nicknameError.value = ''
+
+  // Register with server using existing socket
+  registerUser(socket.value)
+
+  // Handle pending action
+  const action = pendingAction.value
+  pendingAction.value = null
+
+  if (action === 'share') {
+    handleShare()
+  }
+  else if (action === 'message') {
+    sendMessage()
+  }
+}
+
+function handleNicknameCancel() {
+  showNicknameModal.value = false
+  nicknameError.value = ''
+  pendingAction.value = null
 }
 
 function handleVoiceToggle() {
@@ -187,11 +265,33 @@ onDevtoolsClientConnected((devtoolsClient) => {
 })
 
 onMounted(() => {
+  // Initialize share mode from URL/localStorage
+  initShare()
+
   connectSocket()
   initSpeechRecognition((transcript) => {
     inputMessage.value += transcript
     nextTick(adjustTextareaHeight)
   })
+
+  // Setup share listeners when socket is ready
+  watch(socket, (newSocket) => {
+    if (newSocket) {
+      setupShareListeners(newSocket)
+
+      // Check if sharing is active on server (for message interception)
+      checkSharingStatus(newSocket)
+
+      // Register user if we have nickname and user ID
+      if (userId.value && nickname.value) {
+        registerUser(newSocket)
+      }
+      // Show nickname modal immediately only if invited via URL
+      else if (needsNicknameImmediate()) {
+        showNicknameModal.value = true
+      }
+    }
+  }, { immediate: true })
 })
 
 onUnmounted(() => {
@@ -235,8 +335,29 @@ onUnmounted(() => {
           <NBadge :n="statusColor">
             {{ statusText }}
           </NBadge>
+          <NBadge
+            v-if="isShareMode"
+            n="purple"
+            class="flex items-center gap-1"
+          >
+            <NIcon icon="carbon:collaborate" />
+            {{ users.length }} online
+          </NBadge>
         </div>
         <div class="flex items-center gap-2">
+          <!-- Share button -->
+          <NButton
+            :disabled="!isConnected"
+            :n="shareLinkCopied ? 'green' : 'purple'"
+            :title="shareLinkCopied ? 'Link copied!' : 'Share collaborative link'"
+            @click="handleShare"
+          >
+            <NIcon
+              :icon="shareLinkCopied ? 'carbon:checkmark' : 'carbon:share'"
+              class="mr-1"
+            />
+            {{ shareLinkCopied ? 'Copied!' : 'Share' }}
+          </NButton>
           <NButton
             :disabled="!isConnected || isProcessing"
             n="blue"
@@ -385,8 +506,12 @@ onUnmounted(() => {
                 icon="carbon:information"
               />
               <div>
-                <p class="mb-2">Your conversation history is preserved.</p>
-                <p class="text-xs opacity-75">Once reconnected, you can continue where you left off.</p>
+                <p class="mb-2">
+                  Your conversation history is preserved.
+                </p>
+                <p class="text-xs opacity-75">
+                  Once reconnected, you can continue where you left off.
+                </p>
               </div>
             </div>
           </div>
@@ -402,17 +527,34 @@ onUnmounted(() => {
         <div
           v-for="message in messages"
           :key="message.id"
-          :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
+          :class="{
+            'justify-end': message.role === 'user' && isOwnMessage(message.senderId),
+            'justify-start': message.role !== 'user' || !isOwnMessage(message.senderId),
+          }"
           class="flex"
         >
           <div
             :class="{
-              'bg-green-500/20 text-green-800 dark:text-green-100': message.role === 'user',
+              'bg-green-500/20 text-green-800 dark:text-green-100': message.role === 'user' && isOwnMessage(message.senderId),
+              'bg-blue-500/20 text-blue-800 dark:text-blue-100': message.role === 'user' && !isOwnMessage(message.senderId),
               'n-bg-active': message.role === 'assistant',
               'bg-yellow-500/20 text-yellow-800 dark:text-yellow-200 text-sm': message.role === 'system',
             }"
             class="max-w-[85%] rounded-lg px-4 py-2"
           >
+            <!-- User header (in share mode) -->
+            <div
+              v-if="message.role === 'user' && isShareMode && message.senderNickname"
+              class="text-xs opacity-50 mb-1 flex items-center gap-1"
+            >
+              <NIcon icon="carbon:user" />
+              {{ message.senderNickname }}
+              <span
+                v-if="isOwnMessage(message.senderId)"
+                class="opacity-50"
+              >(you)</span>
+            </div>
+
             <!-- Assistant header -->
             <div
               v-if="message.role === 'assistant'"
@@ -617,5 +759,13 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Nickname Modal -->
+    <NicknameModal
+      :error="nicknameError"
+      :visible="showNicknameModal"
+      @cancel="handleNicknameCancel"
+      @submit="handleNicknameSubmit"
+    />
   </div>
 </template>
