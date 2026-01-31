@@ -241,4 +241,33 @@ export class HistoryManager {
 
     return !!conversation && conversation.messages.length > 0
   }
+
+  // Save partial assistant message (for preserving state before config changes)
+  savePartialAssistantMessage(message: Message): void {
+    const conversation = this.getActiveConversation()
+    const lastMessage = conversation.messages[conversation.messages.length - 1]
+
+    if (lastMessage && lastMessage.role === 'assistant') {
+      // Update existing assistant message
+      lastMessage.content = message.content
+      lastMessage.contentBlocks = message.contentBlocks
+      lastMessage.timestamp = message.timestamp
+      if (message.model) lastMessage.model = message.model
+    }
+    else {
+      // Add new assistant message
+      conversation.messages.push(message)
+    }
+
+    conversation.updatedAt = new Date().toISOString()
+
+    // Synchronous write to ensure state is saved before restart
+    try {
+      writeFileSync(this.storePath, JSON.stringify(this.store, null, 2))
+      log('Saved partial assistant message', { messageId: message.id })
+    }
+    catch (error) {
+      log('Failed to save partial assistant message', { error })
+    }
+  }
 }

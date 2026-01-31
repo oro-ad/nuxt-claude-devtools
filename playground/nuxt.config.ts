@@ -9,6 +9,9 @@ export default defineNuxtConfig({
 
     '@oro.ad/nuxt-claude-devtools-bc',
 
+    // i18n module
+    '@nuxtjs/i18n',
+
     // Start a sub Nuxt Server for developing the client
     defineNuxtModule({
       setup(_, nuxt) {
@@ -41,8 +44,30 @@ export default defineNuxtConfig({
     enabled: true,
     claude: {
       command: 'claude',
-      args: [],
+      args: [
+        '--chrome',
+      ],
     },
     debug: true,
+  },
+
+  i18n: {
+    locales: [
+      { code: 'en', name: 'English', file: 'en.json' },
+      { code: 'ru', name: 'Русский', file: 'ru.json' },
+      { code: 'zh', name: '中文', file: 'zh.json' },
+      { code: 'es', name: 'Español', file: 'es.json' },
+      { code: 'de', name: 'Deutsch', file: 'de.json' },
+      { code: 'pt', name: 'Português', file: 'pt.json' },
+      { code: 'ja', name: '日本語', file: 'ja.json' },
+      { code: 'kk', name: 'Қазақша', file: 'kk.json' },
+      { code: 'tr', name: 'Türkçe', file: 'tr.json' },
+      { code: 'fr', name: 'Français', file: 'fr.json' },
+    ],
+    defaultLocale: 'en',
+    strategy: 'prefix_except_default',
+    lazy: true,
+    // i18n/{langDir}
+    langDir: 'locales',
   },
 })

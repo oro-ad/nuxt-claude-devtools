@@ -138,6 +138,19 @@ export function useClaudeChat(
     socket.value.on('stream:message_start', (data: { id: string }) => {
       log('Message start:', data.id)
       pendingToolCalls.value.clear()
+
+      // Ensure we have a streaming assistant message
+      const lastMessage = messages.value[messages.value.length - 1]
+      if (!lastMessage || lastMessage.role !== 'assistant' || !lastMessage.streaming) {
+        // Create new assistant message if not exists or previous is complete
+        addMessage('assistant', '', true)
+      }
+
+      // Initialize contentBlocks for the streaming message
+      const streamingMessage = messages.value.findLast(m => m.role === 'assistant' && m.streaming)
+      if (streamingMessage && !streamingMessage.contentBlocks) {
+        streamingMessage.contentBlocks = []
+      }
     })
 
     socket.value.on('stream:tool_use', (data: { id: string, name: string, input: Record<string, unknown> }) => {
@@ -150,7 +163,9 @@ export function useClaudeChat(
       }
       pendingToolCalls.value.set(data.id, toolBlock)
 
-      const lastMessage = messages.value.findLast(m => m.role === 'assistant')
+      // Find the current streaming assistant message
+      const lastMessage = messages.value.findLast(m => m.role === 'assistant' && m.streaming)
+        || messages.value.findLast(m => m.role === 'assistant')
       if (lastMessage) {
         if (!lastMessage.contentBlocks) {
           lastMessage.contentBlocks = []
@@ -173,7 +188,9 @@ export function useClaudeChat(
         is_error: data.is_error,
       }
 
-      const lastMessage = messages.value.findLast(m => m.role === 'assistant')
+      // Find the current streaming assistant message
+      const lastMessage = messages.value.findLast(m => m.role === 'assistant' && m.streaming)
+        || messages.value.findLast(m => m.role === 'assistant')
       if (lastMessage) {
         if (!lastMessage.contentBlocks) {
           lastMessage.contentBlocks = []
@@ -183,9 +200,31 @@ export function useClaudeChat(
     })
 
     socket.value.on('stream:text_delta', (data: { index: number, text: string }) => {
-      const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-      if (lastMessage && lastMessage.streaming) {
+      // Find the current streaming assistant message
+      const lastMessage = messages.value.findLast(m => m.role === 'assistant' && m.streaming)
+      if (lastMessage) {
         lastMessage.content += data.text
+
+        // Also maintain text blocks in contentBlocks for proper rendering order
+        if (!lastMessage.contentBlocks) {
+          lastMessage.contentBlocks = []
+        }
+
+        // Find or create the last text block to append to
+        const lastBlock = lastMessage.contentBlocks[lastMessage.contentBlocks.length - 1]
+        if (lastBlock && lastBlock.type === 'text') {
+          // Append to existing text block
+          lastBlock.text = (lastBlock.text || '') + data.text
+        }
+        else {
+          // Create new text block (after tool blocks or at start)
+          // Add newline prefix if there are previous blocks (for visual separation)
+          const prefix = lastMessage.contentBlocks.length > 0 ? '\n' : ''
+          lastMessage.contentBlocks.push({
+            type: 'text',
+            text: prefix + data.text,
+          })
+        }
       }
     })
 
@@ -196,7 +235,9 @@ export function useClaudeChat(
       contentBlocks: ContentBlock[]
     }) => {
       log('Message complete:', data.id)
-      const lastMessage = messages.value.findLast(m => m.role === 'assistant')
+      // Find the current streaming assistant message
+      const lastMessage = messages.value.findLast(m => m.role === 'assistant' && m.streaming)
+        || messages.value.findLast(m => m.role === 'assistant')
       if (lastMessage) {
         lastMessage.streaming = false
         lastMessage.content = data.content
@@ -210,13 +251,14 @@ export function useClaudeChat(
       log('Result:', data.subtype, 'cost:', data.cost_usd, 'duration:', data.duration_ms)
     })
 
-    // Legacy events
+    // Legacy events - only append to existing streaming message
     socket.value.on('output:chunk', (chunk: string) => {
       log('Output chunk:', chunk.length)
-      const lastMessage = messages.value.findLast(m => m.role === 'assistant')
-      if (!lastMessage || !lastMessage.streaming) {
-        addMessage('assistant', chunk, true)
+      const lastMessage = messages.value.findLast(m => m.role === 'assistant' && m.streaming)
+      if (lastMessage) {
+        lastMessage.content += chunk
       }
+      // Don't create new messages from legacy events - let stream:message_start handle it
     })
 
     socket.value.on('output:complete', () => {
@@ -240,6 +282,26 @@ export function useClaudeChat(
     socket.value.on('session:closed', (data: { exitCode: number }) => {
       log('Session closed:', data)
       addMessage('system', `Session ended (exit code: ${data.exitCode})`)
+    })
+
+    // Critical file warnings (before config changes that cause restart)
+    socket.value.on('stream:critical_file_warning', (data: {
+      tool_id: string
+      file_name: string
+      message: string
+    }) => {
+      log('Critical file warning:', data.file_name)
+      addMessage('system', data.message)
+    })
+
+    // System messages (after config changes)
+    socket.value.on('stream:system_message', (data: {
+      type: string
+      file_name?: string
+      message: string
+    }) => {
+      log('System message:', data.type, data.message)
+      addMessage('system', data.message)
     })
   }
 

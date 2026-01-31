@@ -4,6 +4,31 @@ import { createLogger } from '../logger'
 
 const log = createLogger('docs', { timestamp: true })
 
+// Files that trigger Nuxt restart when modified
+export const CRITICAL_FILES = [
+  'nuxt.config.ts',
+  'nuxt.config.js',
+  'app.config.ts',
+  'app.config.js',
+  '.nuxtrc',
+  'tsconfig.json',
+] as const
+
+// Check if a file path is a critical config file
+export function isCriticalFile(filePath: string): boolean {
+  const fileName = basename(filePath)
+  return CRITICAL_FILES.includes(fileName as typeof CRITICAL_FILES[number])
+}
+
+// Get critical file name from path (for display)
+export function getCriticalFileName(filePath: string): string | null {
+  const fileName = basename(filePath)
+  if (CRITICAL_FILES.includes(fileName as typeof CRITICAL_FILES[number])) {
+    return fileName
+  }
+  return null
+}
+
 export interface DocFile {
   path: string // Relative path from docs dir (e.g., "api/endpoints.md")
   name: string // File name without extension
@@ -158,6 +183,106 @@ export class DocsManager {
       exists: true,
       updatedAt: new Date().toISOString(),
     }
+  }
+
+  // Section markers for auto-generated content
+  private static readonly CRITICAL_FILES_START = '<!-- NUXT-DEVTOOLS:CRITICAL-FILES -->'
+  private static readonly CRITICAL_FILES_END = '<!-- /NUXT-DEVTOOLS:CRITICAL-FILES -->'
+
+  // Ensure CLAUDE.md has the critical files warning section
+  // Always updates the auto-generated section on startup to ensure latest instructions
+  ensureCriticalFilesSection(autoConfirm: boolean = false): void {
+    const { content, exists } = this.getClaudeMd()
+
+    const criticalFilesSection = this.generateCriticalFilesSection(autoConfirm)
+
+    if (!exists) {
+      // Create new CLAUDE.md with section
+      const newContent = `# Project Guidelines\n\n${criticalFilesSection}\n`
+      this.saveClaudeMd(newContent)
+      log('Created CLAUDE.md with critical files section')
+      return
+    }
+
+    // Check if section markers exist
+    if (content.includes(DocsManager.CRITICAL_FILES_START)) {
+      const startIdx = content.indexOf(DocsManager.CRITICAL_FILES_START)
+      const endIdx = content.indexOf(DocsManager.CRITICAL_FILES_END)
+
+      if (endIdx > startIdx) {
+        // Always replace the section between markers with latest content
+        const before = content.substring(0, startIdx)
+        const after = content.substring(endIdx + DocsManager.CRITICAL_FILES_END.length)
+        const newContent = before + criticalFilesSection + after
+        this.saveClaudeMd(newContent)
+        log('Updated critical files section in CLAUDE.md')
+      }
+    }
+    else {
+      // Append section to end
+      const newContent = content.trimEnd() + '\n\n' + criticalFilesSection + '\n'
+      this.saveClaudeMd(newContent)
+      log('Added critical files section to CLAUDE.md')
+    }
+  }
+
+  private generateCriticalFilesSection(autoConfirm: boolean): string {
+    const filesList = CRITICAL_FILES.map(f => `- \`${f}\``).join('\n')
+
+    return `${DocsManager.CRITICAL_FILES_START}
+## ⚠️ Critical Configuration Files
+
+The following files trigger a full Nuxt restart when modified:
+${filesList}
+
+### 🔴 MANDATORY CHECK (EVERY TIME, NO EXCEPTIONS)
+
+**BEFORE modifying ANY of these files, you MUST:**
+
+\`\`\`
+1. READ .claude-devtools/settings.json
+2. CHECK criticalFiles.autoConfirm value
+3. IF false OR file missing → STOP and ASK user
+4. IF true → inform user, then proceed
+\`\`\`
+
+**This check is REQUIRED every single time, even if you checked before in this session.**
+
+### Order of Operations
+
+1. **Complete ALL prerequisite tasks FIRST**
+   - Create all new files that will be referenced
+   - Install all dependencies
+   - Write all related code
+
+2. **Verify prerequisites exist**
+   - All files referenced in config change must exist
+   - All imports must be valid
+
+3. **Check settings file** (read \`.claude-devtools/settings.json\`)
+
+4. **Act based on autoConfirm setting**
+
+### Example: Adding i18n locale
+
+\`\`\`
+Step 1: Create locales/es.json           ✓ prerequisite
+Step 2: Read .claude-devtools/settings.json  ✓ check flag
+Step 3: If autoConfirm=false → ask user
+Step 4: Update nuxt.config.ts            ✓ only after confirmation
+\`\`\`
+
+### Current Setting
+
+**autoConfirm: ${autoConfirm ? 'ENABLED' : 'DISABLED'}**
+
+${autoConfirm
+    ? '→ Inform user about restart, no confirmation needed.'
+    : '→ MUST ask user and WAIT for explicit "yes" before proceeding.'}
+
+---
+After restart, conversation history is preserved. User can send "continue" to resume.
+${DocsManager.CRITICAL_FILES_END}`
   }
 
   // ============ LLMS Sources ============

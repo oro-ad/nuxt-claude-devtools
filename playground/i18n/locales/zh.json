@@ -1,0 +1,67 @@
+{
+  "hero": {
+    "title": "AI 驱动的开发工具",
+    "tagline": "将 Claude AI 直接集成到您的 Nuxt 开发工作流程中。通过上下文感知的帮助，更快地聊天、调试和构建。",
+    "get_started": "开始使用",
+    "view_npm": "在 npm 查看",
+    "preview_title": "Nuxt DevTools — Claude AI",
+    "preview_user": "如何为这个组件添加身份验证？",
+    "preview_assistant": "查看您的 UserCard 组件，我可以帮您添加身份验证..."
+  },
+  "features": {
+    "section_title": "您需要的一切",
+    "section_subtitle": "集成到您开发环境中的完整 AI 助手",
+    "chat": {
+      "title": "与 Claude 聊天",
+      "description": "直接从 DevTools 与 Claude AI 交互。提问、获取代码建议，并以对话方式调试问题。"
+    },
+    "context": {
+      "title": "丰富的上下文",
+      "description": "自动传递视口大小、当前路由、浏览器信息和选定的组件。Claude 始终知道您正在做什么。"
+    },
+    "docs": {
+      "title": "项目文档",
+      "description": "使用 {'@'}docs/ 自动完成来引用您的项目文档。Claude 会阅读您的文档以提供上下文相关的答案。"
+    },
+    "commands": {
+      "title": "斜杠命令",
+      "description": "使用 /commands 进行快速操作。在 .claude/commands/ 中创建自定义命令以自动化重复任务。"
+    },
+    "mcp": {
+      "title": "MCP 服务器",
+      "description": "使用模型上下文协议服务器扩展 Claude。连接到数据库、API 或自定义工具。"
+    },
+    "agents": {
+      "title": "自定义代理",
+      "description": "为不同任务定义专门的代理。每个代理都有自己的模型、提示和允许的工具。"
+    },
+    "skills": {
+      "title": "技能系统",
+      "description": "创建可重用的技能，Claude 会根据上下文自动应用。非常适合编码标准和模式。"
+    },
+    "voice": {
+      "title": "语音输入",
+      "description": "自然地说出您的问题。支持多种语言的语音识别。"
+    }
+  },
+  "quickstart": {
+    "title": "快速开始",
+    "subtitle": "在一分钟内启动并运行",
+    "step1": "安装 Claude Code CLI",
+    "step2": "安装模块",
+    "step3": "添加到 nuxt.config.ts",
+    "step4": "打开 DevTools"
+  },
+  "cta": {
+    "title": "准备好加速您的开发了吗？",
+    "subtitle": "加入使用 Claude 更快构建更好的 Nuxt 应用程序的开发者行列。",
+    "get_started": "免费开始",
+    "view_npm": "在 npm 查看"
+  },
+  "footer": {
+    "built_by": "用 ❤️ 构建",
+    "powered_by": "由",
+    "docs": "文档",
+    "nuxt_modules": "Nuxt 模块"
+  }
+}

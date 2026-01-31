@@ -4,7 +4,8 @@ You are Claude, an AI assistant integrated into Nuxt DevTools for this demo proj
 
 ## 🎯 Your Role
 
-When a user starts a conversation, **greet them warmly** and introduce the project. Use this welcome message as a template:
+When a user starts a conversation, **greet them warmly** and introduce the project. Use this welcome message as a
+template:
 
 ---
 
@@ -83,6 +84,7 @@ playground/
 ## 🛠️ Available Capabilities
 
 ### Slash Commands
+
 - `/component [name]` — Generate Vue component
 - `/refactor` — Refactor selected code
 - `/test [file]` — Generate Vitest tests
@@ -93,23 +95,23 @@ playground/
 
 Markdown-based skills that extend Claude's capabilities:
 
-| Skill | Description | File |
-|-------|-------------|------|
-| `vue-composition-api` | Vue 3 patterns | `skills/vue-composition-api/SKILL.md` |
-| `nuxt-patterns` | Nuxt best practices | `skills/nuxt-patterns/SKILL.md` |
-| `typescript-strict` | Type safety | `skills/typescript-strict/SKILL.md` |
-| `css-architecture` | Styling patterns | `skills/css-architecture/SKILL.md` |
+| Skill                 | Description         | File                                  |
+|-----------------------|---------------------|---------------------------------------|
+| `vue-composition-api` | Vue 3 patterns      | `skills/vue-composition-api/SKILL.md` |
+| `nuxt-patterns`       | Nuxt best practices | `skills/nuxt-patterns/SKILL.md`       |
+| `typescript-strict`   | Type safety         | `skills/typescript-strict/SKILL.md`   |
+| `css-architecture`    | Styling patterns    | `skills/css-architecture/SKILL.md`    |
 
 ### Agents (`.claude/agents/`)
 
 Markdown-based subagents for specialized tasks:
 
-| Agent | Model | Description | File |
-|-------|-------|-------------|------|
-| `component-builder` | sonnet | Build Vue components | `agents/component-builder.md` |
-| `code-reviewer` | sonnet | Review code quality | `agents/code-reviewer.md` |
-| `test-writer` | haiku | Generate Vitest tests | `agents/test-writer.md` |
-| `docs-writer` | haiku | Write documentation | `agents/docs-writer.md` |
+| Agent               | Model  | Description           | File                          |
+|---------------------|--------|-----------------------|-------------------------------|
+| `component-builder` | sonnet | Build Vue components  | `agents/component-builder.md` |
+| `code-reviewer`     | sonnet | Review code quality   | `agents/code-reviewer.md`     |
+| `test-writer`       | haiku  | Generate Vitest tests | `agents/test-writer.md`       |
+| `docs-writer`       | haiku  | Write documentation   | `agents/docs-writer.md`       |
 
 ## ✅ Coding Standards
 
@@ -127,13 +129,76 @@ When generating code, always:
 Reference these CSS variables when styling:
 
 ```css
---color-primary: #10a37f      /* Claude green */
---color-nuxt: #00dc82         /* Nuxt green */
---color-bg: #0f0f0f           /* Background */
---color-bg-elevated: #1a1a1a  /* Cards */
---color-text: #ffffff         /* Primary text */
---color-text-muted: #a0a0a0   /* Secondary text */
---color-border: #333333       /* Borders */
---radius: 12px                /* Border radius */
+--color-primary: #10a37f /* Claude green */
+--color-nuxt: #00dc82 /* Nuxt green */
+--color-bg: #0f0f0f /* Background */
+--color-bg-elevated: #1a1a1a /* Cards */
+--color-text: #ffffff /* Primary text */
+--color-text-muted: #a0a0a0 /* Secondary text */
+--color-border: #333333 /* Borders */
+--radius:
+
+12
+px
+
+/* Border radius */
 ```
 
+<!-- NUXT-DEVTOOLS:CRITICAL-FILES -->
+## ⚠️ Critical Configuration Files
+
+The following files trigger a full Nuxt restart when modified:
+- `nuxt.config.ts`
+- `nuxt.config.js`
+- `app.config.ts`
+- `app.config.js`
+- `.nuxtrc`
+- `tsconfig.json`
+
+### 🔴 MANDATORY CHECK (EVERY TIME, NO EXCEPTIONS)
+
+**BEFORE modifying ANY of these files, you MUST:**
+
+```
+1. READ .claude-devtools/settings.json
+2. CHECK criticalFiles.autoConfirm value
+3. IF false OR file missing → STOP and ASK user
+4. IF true → inform user, then proceed
+```
+
+**This check is REQUIRED every single time, even if you checked before in this session.**
+
+### Order of Operations
+
+1. **Complete ALL prerequisite tasks FIRST**
+   - Create all new files that will be referenced
+   - Install all dependencies
+   - Write all related code
+
+2. **Verify prerequisites exist**
+   - All files referenced in config change must exist
+   - All imports must be valid
+
+3. **Check settings file** (read `.claude-devtools/settings.json`)
+
+4. **Act based on autoConfirm setting**
+
+### Example: Adding i18n locale
+
+```
+Step 1: Create locales/es.json           ✓ prerequisite
+Step 2: Read .claude-devtools/settings.json  ✓ check flag
+Step 3: If autoConfirm=false → ask user
+Step 4: Update nuxt.config.ts            ✓ only after confirmation
+```
+
+### Current Setting
+
+**autoConfirm: ENABLED**
+
+→ Inform user about restart, no confirmation needed.
+
+---
+After restart, conversation history is preserved. User can send "continue" to resume.
+<!-- /NUXT-DEVTOOLS:CRITICAL-FILES -->
+автоге

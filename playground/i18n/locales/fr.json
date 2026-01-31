@@ -1,0 +1,67 @@
+{
+  "hero": {
+    "title": "DevTools propulsés par l'IA",
+    "tagline": "Intégrez Claude AI directement dans votre workflow de développement Nuxt. Discutez, déboguez et construisez plus vite avec une assistance contextuelle.",
+    "get_started": "Commencer",
+    "view_npm": "Voir sur npm",
+    "preview_title": "Nuxt DevTools — Claude AI",
+    "preview_user": "Comment ajouter l'authentification à ce composant ?",
+    "preview_assistant": "En regardant votre composant UserCard, je peux vous aider à ajouter l'authentification..."
+  },
+  "features": {
+    "section_title": "Tout ce dont vous avez besoin",
+    "section_subtitle": "Un assistant IA complet intégré à votre environnement de développement",
+    "chat": {
+      "title": "Discutez avec Claude",
+      "description": "Interagissez avec Claude AI directement depuis vos DevTools. Posez des questions, obtenez des suggestions de code et déboguez de manière conversationnelle."
+    },
+    "context": {
+      "title": "Contexte riche",
+      "description": "Transmet automatiquement la taille du viewport, la route actuelle, les infos du navigateur et les composants sélectionnés. Claude sait toujours sur quoi vous travaillez."
+    },
+    "docs": {
+      "title": "Documentation projet",
+      "description": "Référencez la documentation de votre projet avec l'autocomplétion {'@'}docs/. Claude lit vos docs pour donner des réponses contextuelles."
+    },
+    "commands": {
+      "title": "Commandes slash",
+      "description": "Utilisez les /commandes pour des actions rapides. Créez des commandes personnalisées dans .claude/commands/ pour automatiser les tâches répétitives."
+    },
+    "mcp": {
+      "title": "Serveurs MCP",
+      "description": "Étendez Claude avec les serveurs Model Context Protocol. Connectez-vous aux bases de données, APIs ou outils personnalisés."
+    },
+    "agents": {
+      "title": "Agents personnalisés",
+      "description": "Définissez des agents spécialisés pour différentes tâches. Chaque agent a son propre modèle, prompt et outils autorisés."
+    },
+    "skills": {
+      "title": "Système de compétences",
+      "description": "Créez des compétences réutilisables que Claude applique automatiquement selon le contexte. Parfait pour les standards et patterns de code."
+    },
+    "voice": {
+      "title": "Entrée vocale",
+      "description": "Posez vos questions naturellement à l'oral. Reconnaissance vocale avec support multilingue."
+    }
+  },
+  "quickstart": {
+    "title": "Démarrage rapide",
+    "subtitle": "Soyez opérationnel en moins d'une minute",
+    "step1": "Installer Claude Code CLI",
+    "step2": "Installer le module",
+    "step3": "Ajouter à nuxt.config.ts",
+    "step4": "Ouvrir DevTools"
+  },
+  "cta": {
+    "title": "Prêt à booster votre développement ?",
+    "subtitle": "Rejoignez les développeurs qui utilisent Claude pour construire de meilleures applications Nuxt plus rapidement.",
+    "get_started": "Commencer gratuitement",
+    "view_npm": "Voir sur npm"
+  },
+  "footer": {
+    "built_by": "Construit avec ❤️ par",
+    "powered_by": "Propulsé par",
+    "docs": "Docs",
+    "nuxt_modules": "Modules Nuxt"
+  }
+}

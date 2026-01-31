@@ -1,0 +1,67 @@
+{
+  "hero": {
+    "title": "AI搭載DevTools",
+    "tagline": "Claude AIをNuxt開発ワークフローに直接統合。コンテキストを理解したアシスタントで、より速くチャット、デバッグ、開発できます。",
+    "get_started": "始める",
+    "view_npm": "npmで見る",
+    "preview_title": "Nuxt DevTools — Claude AI",
+    "preview_user": "このコンポーネントに認証を追加するには？",
+    "preview_assistant": "UserCardコンポーネントを見て、認証の追加をお手伝いします..."
+  },
+  "features": {
+    "section_title": "必要なものすべて",
+    "section_subtitle": "開発環境に統合された完全なAIアシスタント",
+    "chat": {
+      "title": "Claudeとチャット",
+      "description": "DevToolsから直接Claude AIと対話。質問、コード提案の取得、会話形式でのデバッグが可能です。"
+    },
+    "context": {
+      "title": "リッチコンテキスト",
+      "description": "ビューポートサイズ、現在のルート、ブラウザ情報、選択したコンポーネントを自動的に渡します。Claudeは常にあなたの作業内容を把握しています。"
+    },
+    "docs": {
+      "title": "プロジェクトドキュメント",
+      "description": "{'@'}docs/オートコンプリートでドキュメントを参照。Claudeはドキュメントを読んでコンテキストに沿った回答を提供します。"
+    },
+    "commands": {
+      "title": "スラッシュコマンド",
+      "description": "/コマンドでクイックアクション。.claude/commands/にカスタムコマンドを作成して繰り返しタスクを自動化。"
+    },
+    "mcp": {
+      "title": "MCPサーバー",
+      "description": "Model Context Protocolサーバーで Claudeを拡張。データベース、API、カスタムツールに接続。"
+    },
+    "agents": {
+      "title": "カスタムエージェント",
+      "description": "様々なタスク用の専門エージェントを定義。各エージェントは独自のモデル、プロンプト、許可されたツールを持ちます。"
+    },
+    "skills": {
+      "title": "スキルシステム",
+      "description": "Claudeがコンテキストに基づいて自動適用する再利用可能なスキルを作成。コーディング標準やパターンに最適。"
+    },
+    "voice": {
+      "title": "音声入力",
+      "description": "質問を自然に話してください。複数言語対応の音声認識。"
+    }
+  },
+  "quickstart": {
+    "title": "クイックスタート",
+    "subtitle": "1分以内で準備完了",
+    "step1": "Claude Code CLIをインストール",
+    "step2": "モジュールをインストール",
+    "step3": "nuxt.config.tsに追加",
+    "step4": "DevToolsを開く"
+  },
+  "cta": {
+    "title": "開発を加速する準備はできましたか？",
+    "subtitle": "Claudeを使ってより良いNuxtアプリケーションをより速く構築する開発者に参加しましょう。",
+    "get_started": "無料で始める",
+    "view_npm": "npmで見る"
+  },
+  "footer": {
+    "built_by": "❤️を込めて作成",
+    "powered_by": "Powered by",
+    "docs": "ドキュメント",
+    "nuxt_modules": "Nuxtモジュール"
+  }
+}

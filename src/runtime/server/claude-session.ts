@@ -3,8 +3,9 @@ import type { Socket, Server as SocketServer } from 'socket.io'
 import { createLogger } from '../logger'
 import { AgentsManager } from './agents-manager'
 import { CommandsManager } from './commands-manager'
-import { DocsManager } from './docs-manager'
+import { DocsManager, getCriticalFileName, isCriticalFile } from './docs-manager'
 import { HistoryManager } from './history-manager'
+import { SettingsManager } from './settings-manager'
 import { SkillsManager } from './skills-manager'
 import type {
   AssistantEvent,
@@ -75,6 +76,7 @@ export class ClaudeSession {
   private commandsManager: CommandsManager
   private agentsManager: AgentsManager
   private skillsManager: SkillsManager
+  private settingsManager: SettingsManager
 
   // Claude CLI session ID (in-memory only, lost on hot-reload)
   private claudeSessionId: string | null = null
@@ -86,6 +88,9 @@ export class ClaudeSession {
   private currentModel: string = ''
   private accumulatedText: string = ''
 
+  // Track pending critical file operations
+  private pendingCriticalFiles: Map<string, string> = new Map() // tool_id -> file_name
+
   constructor(config: ClaudeSessionConfig) {
     this.config = config
     this.historyManager = new HistoryManager(config.rootDir)
@@ -93,6 +98,7 @@ export class ClaudeSession {
     this.commandsManager = new CommandsManager(config.rootDir)
     this.agentsManager = new AgentsManager(config.rootDir)
     this.skillsManager = new SkillsManager(config.rootDir)
+    this.settingsManager = new SettingsManager(config.rootDir)
   }
 
   attachSocketIO(io: SocketServer) {
@@ -435,6 +441,21 @@ export class ClaudeSession {
         socket.emit('skills:list', skills)
       })
 
+      // ===== SETTINGS HANDLERS =====
+      socket.on('settings:get', () => {
+        log('Settings get requested')
+        const settings = this.settingsManager.getSettings()
+        socket.emit('settings:get', settings)
+      })
+
+      socket.on('settings:update', (updates: Record<string, unknown>) => {
+        log('Settings update requested', updates)
+        const settings = this.settingsManager.updateSettings(updates as Parameters<typeof this.settingsManager.updateSettings>[0])
+        socket.emit('settings:updated', settings)
+        // Also update CLAUDE.md with new settings
+        this.docsManager.ensureCriticalFilesSection(this.settingsManager.isAutoConfirmEnabled())
+      })
+
       socket.on('disconnect', () => {
         log('Client disconnected', { socketId: socket.id })
       })
@@ -451,6 +472,32 @@ export class ClaudeSession {
     this.currentMessageId = generateId()
     this.currentModel = ''
     this.accumulatedText = ''
+    this.pendingCriticalFiles.clear()
+  }
+
+  // Get DocsManager instance (for plugin initialization)
+  getDocsManager(): DocsManager {
+    return this.docsManager
+  }
+
+  // Get SettingsManager instance
+  getSettingsManager(): SettingsManager {
+    return this.settingsManager
+  }
+
+  // Force save current state before critical file change causes restart
+  private forceSaveCurrentState(): void {
+    if (this.accumulatedText || this.currentContentBlocks.length > 0) {
+      this.historyManager.savePartialAssistantMessage({
+        id: this.currentMessageId,
+        role: 'assistant',
+        content: this.accumulatedText,
+        contentBlocks: this.currentContentBlocks.length > 0 ? [...this.currentContentBlocks] : undefined,
+        timestamp: new Date().toISOString(),
+        model: this.currentModel,
+      })
+      log('Force saved current state before critical file change')
+    }
   }
 
   private buildSystemPrompt(): string | null {
@@ -571,6 +618,26 @@ export class ClaudeSession {
         }
         this.currentContentBlocks.push(toolBlock)
 
+        // Check for critical file operations (Write or Edit tools)
+        if ((toolEvent.name === 'Write' || toolEvent.name === 'Edit') && toolEvent.input) {
+          const filePath = (toolEvent.input as { file_path?: string }).file_path
+          if (filePath && isCriticalFile(filePath)) {
+            const fileName = getCriticalFileName(filePath)
+            if (fileName) {
+              this.pendingCriticalFiles.set(toolEvent.tool_use_id, fileName)
+              // Force save current state before the file operation
+              this.forceSaveCurrentState()
+              // Emit warning to client
+              this.io?.emit('stream:critical_file_warning', {
+                tool_id: toolEvent.tool_use_id,
+                file_name: fileName,
+                message: `⚠️ Изменение ${fileName} вызовет перезапуск Nuxt`,
+              })
+              log('Critical file operation detected', { file: fileName, toolId: toolEvent.tool_use_id })
+            }
+          }
+        }
+
         this.io?.emit('stream:tool_use', {
           id: toolEvent.tool_use_id,
           name: toolEvent.name,
@@ -588,6 +655,19 @@ export class ClaudeSession {
           content: resultEvent.content,
           is_error: resultEvent.is_error,
         })
+
+        // Check if this was a critical file operation
+        const criticalFileName = this.pendingCriticalFiles.get(resultEvent.tool_use_id)
+        if (criticalFileName && !resultEvent.is_error) {
+          // Emit system message about config change
+          this.io?.emit('stream:system_message', {
+            type: 'config_changed',
+            file_name: criticalFileName,
+            message: `🔄 ${criticalFileName} изменён. Nuxt перезапускается...`,
+          })
+          this.pendingCriticalFiles.delete(resultEvent.tool_use_id)
+          log('Critical file modified', { file: criticalFileName })
+        }
 
         this.io?.emit('stream:tool_result', {
           tool_use_id: resultEvent.tool_use_id,
@@ -898,6 +978,9 @@ let sessionInstance: ClaudeSession | null = null
 export function initClaudeSession(config: ClaudeSessionConfig): ClaudeSession {
   if (!sessionInstance) {
     sessionInstance = new ClaudeSession(config)
+    // Ensure CLAUDE.md has critical files warning (with current settings)
+    const autoConfirm = sessionInstance.getSettingsManager().isAutoConfirmEnabled()
+    sessionInstance.getDocsManager().ensureCriticalFilesSection(autoConfirm)
     log('Session initialized')
   }
   return sessionInstance

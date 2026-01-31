@@ -1,0 +1,33 @@
+{
+  "welcome": {
+    "title": "Bienvenido a Nuxt Claude DevTools",
+    "subtitle": "Asistente de desarrollo impulsado por IA integrado en Nuxt DevTools",
+    "description": "Experimenta asistencia de IA perfecta mientras construyes tus aplicaciones Nuxt"
+  },
+  "features": {
+    "title": "Características",
+    "ai_assistant": "Asistente IA",
+    "ai_assistant_desc": "Claude integrado directamente en DevTools",
+    "code_generation": "Generación de código",
+    "code_generation_desc": "Genera componentes, composables y rutas API",
+    "code_review": "Revisión de código",
+    "code_review_desc": "Obtén retroalimentación instantánea sobre tu código"
+  },
+  "stats": {
+    "components": "Componentes",
+    "composables": "Composables",
+    "api_routes": "Rutas API"
+  },
+  "actions": {
+    "get_started": "Comenzar",
+    "learn_more": "Más información",
+    "open_devtools": "Abrir DevTools"
+  },
+  "language": {
+    "select": "Seleccionar idioma",
+    "en": "Inglés",
+    "ru": "Ruso",
+    "zh": "Chino",
+    "es": "Español"
+  }
+}

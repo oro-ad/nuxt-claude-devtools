@@ -1,53 +1,67 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <script lang="ts" setup>
-const features = [
+import { computed } from 'vue'
+import { useI18n } from '#imports'
+
+const { t } = useI18n()
+
+const features = computed(() => [
   {
     icon: '💬',
-    title: 'Chat with Claude',
-    description: 'Interact with Claude AI directly from your DevTools. Ask questions, get code suggestions, and debug issues conversationally.',
+    key: 'chat',
+    title: t('features.chat.title'),
+    description: t('features.chat.description'),
   },
   {
     icon: '🌐',
-    title: 'Rich Context',
-    description: 'Automatically passes viewport size, current route, browser info, and selected components. Claude always knows what you\'re working on.',
+    key: 'context',
+    title: t('features.context.title'),
+    description: t('features.context.description'),
   },
   {
     icon: '📚',
-    title: 'Project Docs',
-    description: 'Reference your project documentation with @docs/ autocomplete. Claude reads your docs to give contextual answers.',
+    key: 'docs',
+    title: t('features.docs.title'),
+    description: t('features.docs.description'),
   },
   {
     icon: '⚡',
-    title: 'Slash Commands',
-    description: 'Use /commands for quick actions. Create custom commands in .claude/commands/ to automate repetitive tasks.',
+    key: 'commands',
+    title: t('features.commands.title'),
+    description: t('features.commands.description'),
   },
   {
     icon: '🔌',
-    title: 'MCP Servers',
-    description: 'Extend Claude with Model Context Protocol servers. Connect to databases, APIs, or custom tools.',
+    key: 'mcp',
+    title: t('features.mcp.title'),
+    description: t('features.mcp.description'),
   },
   {
     icon: '🤖',
-    title: 'Custom Agents',
-    description: 'Define specialized agents for different tasks. Each agent has its own model, prompt, and allowed tools.',
+    key: 'agents',
+    title: t('features.agents.title'),
+    description: t('features.agents.description'),
   },
   {
     icon: '🎨',
-    title: 'Skills System',
-    description: 'Create reusable skills that Claude applies automatically based on context. Perfect for coding standards and patterns.',
+    key: 'skills',
+    title: t('features.skills.title'),
+    description: t('features.skills.description'),
   },
   {
     icon: '🎙️',
-    title: 'Voice Input',
-    description: 'Speak your questions naturally. Voice recognition with support for multiple languages.',
+    key: 'voice',
+    title: t('features.voice.title'),
+    description: t('features.voice.description'),
   },
-]
+])
 
-const quickStart = [
-  { step: '1', text: 'Install Claude Code CLI', code: 'npm install -g @anthropic-ai/claude-code' },
-  { step: '2', text: 'Install the module', code: 'npm install -D @oro.ad/nuxt-claude-devtools' },
-  { step: '3', text: 'Add to nuxt.config.ts', code: 'modules: [\'@oro.ad/nuxt-claude-devtools\']' },
-  { step: '4', text: 'Open DevTools', code: 'Press Shift + Option + D' },
-]
+const quickStart = computed(() => [
+  { step: '1', text: t('quickstart.step1'), code: 'npm install -g @anthropic-ai/claude-code' },
+  { step: '2', text: t('quickstart.step2'), code: 'npm install -D @oro.ad/nuxt-claude-devtools' },
+  { step: '3', text: t('quickstart.step3'), code: 'modules: [\'@oro.ad/nuxt-claude-devtools\']' },
+  { step: '4', text: t('quickstart.step4'), code: 'Press Shift + Option + D' },
+])
 
 const npmPackage = '@oro.ad/nuxt-claude-devtools'
 const repoUrl = 'https://github.com/oro-ad/nuxt-claude-devtools'
@@ -57,6 +71,11 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 <template>
   <div class="app">
+    <!-- Language Switcher -->
+    <div class="language-bar">
+      <LanguageSwitcher />
+    </div>
+
     <!-- Hero Section -->
     <header class="hero">
       <div class="hero-content">
@@ -65,10 +84,9 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
           <span class="logo-plus">+</span>
           <span class="logo-claude">Claude</span>
         </div>
-        <h1>AI-Powered DevTools</h1>
+        <h1>{{ t('hero.title') }}</h1>
         <p class="tagline">
-          Bring Claude AI directly into your Nuxt development workflow.
-          Chat, debug, and build faster with context-aware assistance.
+          {{ t('hero.tagline') }}
         </p>
         <!-- Badges -->
         <div class="badges">
@@ -107,14 +125,14 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
             class="btn btn-primary"
             target="_blank"
           >
-            <span>📦</span> Get Started
+            <span>📦</span> {{ t('hero.get_started') }}
           </a>
           <a
             :href="`https://npmjs.com/package/${npmPackage}`"
             class="btn btn-secondary"
             target="_blank"
           >
-            <span>📊</span> View on npm
+            <span>📊</span> {{ t('hero.view_npm') }}
           </a>
         </div>
       </div>
@@ -124,14 +142,14 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
             <div class="preview-dots">
               <span /><span /><span />
             </div>
-            <span class="preview-title">Nuxt DevTools — Claude AI</span>
+            <span class="preview-title">{{ t('hero.preview_title') }}</span>
           </div>
           <div class="preview-content">
             <div class="chat-bubble user">
-              How do I add authentication to this component?
+              {{ t('hero.preview_user') }}
             </div>
             <div class="chat-bubble assistant">
-              <span class="typing">Looking at your UserCard component, I can help you add authentication...</span>
+              <span class="typing">{{ t('hero.preview_assistant') }}</span>
             </div>
           </div>
         </div>
@@ -140,14 +158,14 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Features Section -->
     <section class="features">
-      <h2>Everything you need</h2>
+      <h2>{{ t('features.section_title') }}</h2>
       <p class="section-subtitle">
-        A complete AI assistant integrated into your development environment
+        {{ t('features.section_subtitle') }}
       </p>
       <div class="features-grid">
         <div
           v-for="feature in features"
-          :key="feature.title"
+          :key="feature.key"
           class="feature-card"
         >
           <span class="feature-icon">{{ feature.icon }}</span>
@@ -159,9 +177,9 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Quick Start Section -->
     <section class="quickstart">
-      <h2>Quick Start</h2>
+      <h2>{{ t('quickstart.title') }}</h2>
       <p class="section-subtitle">
-        Get up and running in under a minute
+        {{ t('quickstart.subtitle') }}
       </p>
       <div class="steps">
         <div
@@ -184,22 +202,22 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- CTA Section -->
     <section class="cta">
-      <h2>Ready to supercharge your development?</h2>
-      <p>Join developers using Claude to build better Nuxt applications faster.</p>
+      <h2>{{ t('cta.title') }}</h2>
+      <p>{{ t('cta.subtitle') }}</p>
       <div class="cta-actions">
         <a
           :href="repoUrl"
           class="btn btn-primary btn-large"
           target="_blank"
         >
-          Get Started Free
+          {{ t('cta.get_started') }}
         </a>
         <a
           :href="`https://npmjs.com/package/${npmPackage}`"
           class="btn btn-outline btn-large"
           target="_blank"
         >
-          View on npm
+          {{ t('cta.view_npm') }}
         </a>
       </div>
     </section>
@@ -208,12 +226,12 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
     <footer class="footer">
       <div class="footer-content">
         <p>
-          Built with ❤️ by
+          {{ t('footer.built_by') }}
           <a
             href="mailto:jobsbystr@gmail.com"
           >Simon Bystrov</a>
           ·
-          Powered by
+          {{ t('footer.powered_by') }}
           <a
             href="https://claude.ai"
             target="_blank"
@@ -223,11 +241,11 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
           <a
             :href="docsUrl"
             target="_blank"
-          >Docs</a>
+          >{{ t('footer.docs') }}</a>
           <a
             :href="nuxtModulesUrl"
             target="_blank"
-          >Nuxt Modules</a>
+          >{{ t('footer.nuxt_modules') }}</a>
           <a
             :href="repoUrl"
             target="_blank"
@@ -242,37 +260,17 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   </div>
 </template>
 
-<style>
-:root {
-  --color-primary: #10a37f;
-  --color-primary-dark: #0d8a6a;
-  --color-nuxt: #00dc82;
-  --color-claude: #d97706;
-  --color-bg: #0f0f0f;
-  --color-bg-elevated: #1a1a1a;
-  --color-bg-card: #242424;
-  --color-text: #ffffff;
-  --color-text-muted: #a0a0a0;
-  --color-border: #333333;
-  --radius: 12px;
-  --radius-sm: 8px;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--color-bg);
-  color: var(--color-text);
-  line-height: 1.6;
-}
-
+<style scoped>
 .app {
   min-height: 100vh;
+}
+
+/* Language Bar */
+.language-bar {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
 }
 
 /* Hero Section */
@@ -596,27 +594,6 @@ body {
   border: 1px solid var(--color-border);
 }
 
-/* Demo Section */
-.demo-section {
-  padding: 100px 40px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.demo-components {
-  display: flex;
-  gap: 24px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.demo-note {
-  text-align: center;
-  margin-top: 24px;
-  color: var(--color-primary);
-  font-size: 14px;
-}
-
 /* CTA Section */
 .cta {
   padding: 100px 40px;
@@ -703,15 +680,39 @@ body {
 }
 
 @media (max-width: 640px) {
+  .language-bar {
+    position: relative;
+    top: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: 16px;
+    background: var(--color-bg);
+  }
+
   .hero {
-    padding: 40px 16px;
+    padding: 20px 16px 40px;
   }
 
   .hero h1 {
-    font-size: 36px;
+    font-size: 32px;
+  }
+
+  .tagline {
+    font-size: 16px;
   }
 
   .badges {
+    justify-content: center;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
     justify-content: center;
   }
 

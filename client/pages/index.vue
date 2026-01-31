@@ -318,6 +318,17 @@ onUnmounted(() => {
                 />
                 Agents
               </NuxtLink>
+              <div class="border-t border-neutral-200 dark:border-neutral-700 my-1" />
+              <NuxtLink
+                class="flex items-center gap-2 px-3 py-2 hover:n-bg-active transition-colors"
+                to="/settings"
+              >
+                <NIcon
+                  class="text-neutral-500"
+                  icon="carbon:settings"
+                />
+                Settings
+              </NuxtLink>
             </div>
           </div>
         </div>
@@ -333,8 +344,58 @@ onUnmounted(() => {
         </NTip>
       </div>
 
+      <!-- Disconnected Overlay -->
+      <div
+        v-if="!isConnected"
+        class="flex-1 flex items-center justify-center p-8"
+      >
+        <div class="text-center max-w-md">
+          <div class="relative inline-block mb-6">
+            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-orange-500/20 to-red-500/20 flex items-center justify-center">
+              <NIcon
+                class="text-5xl text-orange-500 animate-pulse"
+                icon="carbon:connection-signal-off"
+              />
+            </div>
+            <div class="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+              <div class="w-3 h-3 rounded-full bg-red-500 animate-ping" />
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold mb-3 bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+            Connection Lost
+          </h2>
+
+          <p class="text-neutral-500 dark:text-neutral-400 mb-6 leading-relaxed">
+            The connection to the server was interrupted. This usually happens when Nuxt restarts after config changes.
+          </p>
+
+          <div class="flex items-center justify-center gap-2 text-sm text-neutral-400 mb-6">
+            <NIcon
+              class="animate-spin"
+              icon="carbon:renew"
+            />
+            <span>Attempting to reconnect...</span>
+          </div>
+
+          <div class="p-4 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 text-left text-sm">
+            <div class="flex items-start gap-2 text-neutral-500 dark:text-neutral-400">
+              <NIcon
+                class="mt-0.5 text-blue-500"
+                icon="carbon:information"
+              />
+              <div>
+                <p class="mb-2">Your conversation history is preserved.</p>
+                <p class="text-xs opacity-75">Once reconnected, you can continue where you left off.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Messages -->
       <div
+        v-if="isConnected"
         ref="messagesContainer"
         class="flex-1 overflow-auto p-4 space-y-4"
       >
@@ -449,7 +510,10 @@ onUnmounted(() => {
       </div>
 
       <!-- Input -->
-      <div class="p-4">
+      <div
+        v-if="isConnected"
+        class="p-4"
+      >
         <ComponentContext
           :components="selectedComponents"
           @remove="removeComponent"

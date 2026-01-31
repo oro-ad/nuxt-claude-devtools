@@ -1,0 +1,67 @@
+{
+  "hero": {
+    "title": "Yapay Zeka Destekli DevTools",
+    "tagline": "Claude AI'yi dogrudan Nuxt gelistirme is akisiniza entegre edin. Baglam bilincli yardimla sohbet edin, hata ayiklayin ve daha hizli gelistirin.",
+    "get_started": "Basla",
+    "view_npm": "npm'de Goruntule",
+    "preview_title": "Nuxt DevTools — Claude AI",
+    "preview_user": "Bu bilesene kimlik dogrulama nasil eklerim?",
+    "preview_assistant": "UserCard bileseninize bakarak, kimlik dogrulama eklemenize yardimci olabilirim..."
+  },
+  "features": {
+    "section_title": "Ihtiyaciniz olan her sey",
+    "section_subtitle": "Gelistirme ortaminiza entegre edilmis eksiksiz bir yapay zeka asistani",
+    "chat": {
+      "title": "Claude ile Sohbet",
+      "description": "DevTools'tan dogrudan Claude AI ile etkilesim kurun. Sorular sorun, kod onerileri alin ve sorunlari konusmali olarak hata ayiklayin."
+    },
+    "context": {
+      "title": "Zengin Baglam",
+      "description": "Gorunum boyutu, mevcut rota, tarayici bilgisi ve secili bilesenleri otomatik olarak iletir. Claude her zaman ne uzerinde calistiginizi bilir."
+    },
+    "docs": {
+      "title": "Proje Dokumanlari",
+      "description": "{'@'}docs/ otomatik tamamlama ile proje dokumantasyonunuza basvurun. Claude baglamsal yanitlar vermek icin dokumanlarinizi okur."
+    },
+    "commands": {
+      "title": "Slash Komutlari",
+      "description": "Hizli islemler icin /komutlar kullanin. Tekrarlayan gorevleri otomatiklestirmek icin .claude/commands/ icinde ozel komutlar olusturun."
+    },
+    "mcp": {
+      "title": "MCP Sunuculari",
+      "description": "Model Context Protocol sunuculari ile Claude'u genisletin. Veritabanlarina, API'lere veya ozel araclara baglanin."
+    },
+    "agents": {
+      "title": "Ozel Ajanlar",
+      "description": "Farkli gorevler icin ozellestirilmis ajanlar tanimlayin. Her ajanin kendi modeli, istemi ve izin verilen araclari vardir."
+    },
+    "skills": {
+      "title": "Yetenekler Sistemi",
+      "description": "Claude'un baglama gore otomatik olarak uyguladigi yeniden kullanilabilir yetenekler olusturun. Kodlama standartlari ve desenler icin mukemmel."
+    },
+    "voice": {
+      "title": "Sesli Giris",
+      "description": "Sorularinizi dogal olarak soyleyerek iletin. Birden fazla dil destegi ile ses tanima."
+    }
+  },
+  "quickstart": {
+    "title": "Hizli Baslangic",
+    "subtitle": "Bir dakikadan kisa surede calistirin",
+    "step1": "Claude Code CLI'yi yukleyin",
+    "step2": "Modulu yukleyin",
+    "step3": "nuxt.config.ts'ye ekleyin",
+    "step4": "DevTools'u acin"
+  },
+  "cta": {
+    "title": "Gelistirmenizi guclendirilmeye hazir misiniz?",
+    "subtitle": "Daha iyi Nuxt uygulamalari daha hizli olusturmak icin Claude kullanan gelistiricilere katilin.",
+    "get_started": "Ucretsiz Baslat",
+    "view_npm": "npm'de Goruntule"
+  },
+  "footer": {
+    "built_by": "Sevgiyle yapildi",
+    "powered_by": "Tarafindan desteklenmektedir",
+    "docs": "Dokumanlar",
+    "nuxt_modules": "Nuxt Modulleri"
+  }
+}
