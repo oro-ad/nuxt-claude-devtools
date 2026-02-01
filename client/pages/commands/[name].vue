@@ -18,7 +18,7 @@ interface CommandFormData {
   allowedTools: string
 }
 
-const props = defineProps<{
+const _props = defineProps<{
   command: SlashCommand | null
   isEditing: boolean
   editForm: CommandFormData
@@ -34,7 +34,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <template v-if="command">
+  <div v-if="command">
     <CrudEditorHeader
       :title="`/${command.name}`"
       :description="command.description"
@@ -66,7 +66,7 @@ const emit = defineEmits<{
       v-else
       :command="command"
     />
-  </template>
+  </div>
 
   <!-- Loading or not found -->
   <div

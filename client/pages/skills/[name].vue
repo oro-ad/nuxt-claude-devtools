@@ -18,7 +18,7 @@ interface SkillFormData {
   model: string
 }
 
-const props = defineProps<{
+const _props = defineProps<{
   skill: Skill | null
   isEditing: boolean
   editForm: SkillFormData
@@ -34,7 +34,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <template v-if="skill">
+  <div v-if="skill">
     <CrudEditorHeader
       :title="skill.name"
       :description="skill.description"
@@ -63,7 +63,7 @@ const emit = defineEmits<{
       :skill="skill"
       :formatted-date="formatDate(skill.updatedAt)"
     />
-  </template>
+  </div>
 
   <!-- Loading or not found -->
   <div

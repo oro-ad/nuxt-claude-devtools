@@ -20,7 +20,7 @@ interface AgentFormData {
   skills: string[]
 }
 
-const props = defineProps<{
+const _props = defineProps<{
   agent: Agent | null
   isEditing: boolean
   editForm: AgentFormData
@@ -37,7 +37,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <template v-if="agent">
+  <div v-if="agent">
     <CrudEditorHeader
       :description="agent.description"
       :is-editing="isEditing"
@@ -55,9 +55,9 @@ const emit = defineEmits<{
     <!-- Edit Mode -->
     <AgentForm
       v-if="isEditing"
-      :model-value="editForm"
       :available-skills="availableSkills"
       :error="formError"
+      :model-value="editForm"
       mode="edit"
     />
 
@@ -67,7 +67,7 @@ const emit = defineEmits<{
       :agent="agent"
       :formatted-date="formatDate(agent.updatedAt)"
     />
-  </template>
+  </div>
 
   <!-- Loading or not found -->
   <div

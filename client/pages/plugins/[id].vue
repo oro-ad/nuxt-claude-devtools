@@ -27,7 +27,7 @@ interface PluginDetails {
   agents: Array<{ name: string, description: string }>
 }
 
-const props = defineProps<{
+const _props = defineProps<{
   plugin: InstalledPlugin | null
   pluginDetails: PluginDetails | null
   getScopeColor: (scope: string) => string
@@ -35,7 +35,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <template v-if="plugin">
+  <div v-if="plugin">
     <!-- Header -->
     <div class="p-4 border-b border-neutral-200 dark:border-neutral-800">
       <div class="flex items-center gap-3">
@@ -222,7 +222,7 @@ const props = defineProps<{
         </div>
       </template>
     </div>
-  </template>
+  </div>
 
   <!-- Loading or not found -->
   <div

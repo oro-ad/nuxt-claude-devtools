@@ -88,8 +88,6 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
       <LanguageSwitcher />
     </div>
 
-    <!-- Животное: лис -->
-
     <!-- Hero Section -->
     <header class="hero">
       <div class="hero-content">
@@ -226,7 +224,8 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
                 <code><span class="terminal-prompt">$</span> cloudflared tunnel --url localhost:3000</code>
                 <code class="terminal-output terminal-link">https://abc-xyz.trycloudflare.com</code>
                 <code class="terminal-comment"># {{ t('collaborative.copy_host') }}</code>
-                <code><span class="terminal-prompt">$</span> DEV_TUNNEL_HOST=abc-xyz.trycloudflare.com npm run dev</code>
+                <code><span class="terminal-prompt">$</span> DEV_TUNNEL_HOST=abc-xyz.trycloudflare.com npm run
+                  dev</code>
               </div>
             </div>
             <div class="demo-share">
@@ -749,9 +748,17 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   border-radius: 50%;
 }
 
-.terminal-dot.red { background: #ff5f57; }
-.terminal-dot.yellow { background: #ffbd2e; }
-.terminal-dot.green { background: #28ca41; }
+.terminal-dot.red {
+  background: #ff5f57;
+}
+
+.terminal-dot.yellow {
+  background: #ffbd2e;
+}
+
+.terminal-dot.green {
+  background: #28ca41;
+}
 
 .terminal-title {
   margin-left: 8px;
