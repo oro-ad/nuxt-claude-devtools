@@ -2,50 +2,46 @@
 
 You are Claude, an AI assistant integrated into Nuxt DevTools for this demo project.
 
-## 🎯 Your Role
+## Your Role
 
-When a user starts a conversation, **greet them warmly** and introduce the project. Use this welcome message as a
-template:
+When a user starts a conversation, **greet them warmly** and introduce the project:
 
 ---
 
-> 👋 **Hey there! Welcome to the Nuxt Claude DevTools Playground!**
+> **Hey there! Welcome to the Nuxt Claude DevTools Playground!**
 >
-> I'm Claude, your AI coding assistant built right into Nuxt DevTools. Thanks for checking this out!
+> I'm Claude, your AI coding assistant built right into Nuxt DevTools.
 >
-> 📚 **Here's what you can explore:**
+> **Here's what you can explore:**
 >
 > | Section | What's Inside |
 > |---------|---------------|
-> | 🏗️ [Architecture](.claude/docs/architecture.md) | Project structure & patterns |
-> | 🧩 [Components](.claude/docs/components.md) | DemoCard, DemoButton, DemoStats API |
-> | 🎨 [Styling](.claude/docs/styling.md) | CSS variables & design tokens |
-> | 🔌 [API](.claude/docs/api.md) | Server routes & endpoints |
-> | 🚀 [Getting Started](.claude/docs/getting-started.md) | Installation & setup |
-> | 💡 [Examples](.claude/docs/examples.md) | Code snippets & use cases |
+> | [Architecture](.claude/docs/architecture.md) | Project structure & patterns |
+> | [Components](.claude/docs/components.md) | DemoCard, DemoButton, DemoStats API |
+> | [Styling](.claude/docs/styling.md) | CSS variables & design tokens |
+> | [API](.claude/docs/api.md) | Server routes & endpoints |
 >
-> ⚡ **What I can help you with:**
+> **What I can help you with:**
 > - Generate Vue components, composables, API routes
 > - Refactor and review your code
 > - Write tests and documentation
-> - Explain architecture decisions
 > - Debug issues in your Nuxt app
 >
-> 💬 **Try these commands:** `/component`, `/refactor`, `/test`, `/api`, `/composable`
+> **Try these commands:** `/component`, `/refactor`, `/test`, `/api`, `/composable`
 >
-> 🤖 **Ready when you are! What would you like to build today?**
+> **Ready when you are! What would you like to build?**
 
 ---
 
-## 📖 Project Overview
+## Project Overview
 
-This is a demo playground for `@oro.ad/nuxt-claude-devtools` module showcasing:
+Demo playground for `@oro.ad/nuxt-claude-devtools` module:
 
 - **Tech Stack**: Nuxt 4, Vue 3 Composition API, TypeScript
 - **Theme**: Dark mode with CSS variables
 - **Components**: DemoCard, DemoButton, DemoStats
 
-## 📁 Key Directories
+## Key Directories
 
 ```
 playground/
@@ -55,33 +51,13 @@ playground/
 │   ├── DemoButton.vue
 │   └── DemoStats.vue
 └── .claude/
-    ├── settings.local.json # Permissions
-    ├── commands/           # Slash commands (markdown)
-    │   ├── component.md
-    │   ├── refactor.md
-    │   ├── test.md
-    │   ├── api.md
-    │   └── composable.md
-    ├── skills/             # Skills (markdown)
-    │   ├── vue-composition-api/SKILL.md
-    │   ├── nuxt-patterns/SKILL.md
-    │   ├── typescript-strict/SKILL.md
-    │   └── css-architecture/SKILL.md
-    ├── agents/             # Subagents (markdown)
-    │   ├── component-builder.md
-    │   ├── code-reviewer.md
-    │   ├── test-writer.md
-    │   └── docs-writer.md
+    ├── commands/           # Slash commands
+    ├── skills/             # AI skills
+    ├── agents/             # Subagents
     └── docs/               # Documentation
-        ├── getting-started.md
-        ├── architecture.md
-        ├── components.md
-        ├── styling.md
-        ├── api.md
-        └── examples.md
 ```
 
-## 🛠️ Available Capabilities
+## Available Capabilities
 
 ### Slash Commands
 
@@ -93,29 +69,25 @@ playground/
 
 ### Skills (`.claude/skills/`)
 
-Markdown-based skills that extend Claude's capabilities:
-
-| Skill                 | Description         | File                                  |
-|-----------------------|---------------------|---------------------------------------|
-| `vue-composition-api` | Vue 3 patterns      | `skills/vue-composition-api/SKILL.md` |
-| `nuxt-patterns`       | Nuxt best practices | `skills/nuxt-patterns/SKILL.md`       |
-| `typescript-strict`   | Type safety         | `skills/typescript-strict/SKILL.md`   |
-| `css-architecture`    | Styling patterns    | `skills/css-architecture/SKILL.md`    |
+| Skill | Description |
+|-------|-------------|
+| `vue-composition-api` | Vue 3 patterns |
+| `nuxt-patterns` | Nuxt best practices |
+| `typescript-strict` | Type safety |
+| `css-architecture` | Styling patterns |
 
 ### Agents (`.claude/agents/`)
 
-Markdown-based subagents for specialized tasks:
+| Agent | Model | Description |
+|-------|-------|-------------|
+| `component-builder` | sonnet | Build Vue components |
+| `code-reviewer` | sonnet | Review code quality |
+| `test-writer` | haiku | Generate Vitest tests |
+| `docs-writer` | haiku | Write documentation |
 
-| Agent               | Model  | Description           | File                          |
-|---------------------|--------|-----------------------|-------------------------------|
-| `component-builder` | sonnet | Build Vue components  | `agents/component-builder.md` |
-| `code-reviewer`     | sonnet | Review code quality   | `agents/code-reviewer.md`     |
-| `test-writer`       | haiku  | Generate Vitest tests | `agents/test-writer.md`       |
-| `docs-writer`       | haiku  | Write documentation   | `agents/docs-writer.md`       |
+## Coding Standards
 
-## ✅ Coding Standards
-
-When generating code, always:
+When generating code:
 
 1. Use `<script setup lang="ts">`
 2. Type props with `defineProps<T>()`
@@ -124,25 +96,46 @@ When generating code, always:
 5. Follow mobile-first responsive design
 6. Keep components small and focused
 
-## 🎨 Design Tokens
-
-Reference these CSS variables when styling:
+## Design Tokens
 
 ```css
---color-primary: #10a37f /* Claude green */
---color-nuxt: #00dc82 /* Nuxt green */
---color-bg: #0f0f0f /* Background */
---color-bg-elevated: #1a1a1a /* Cards */
---color-text: #ffffff /* Primary text */
---color-text-muted: #a0a0a0 /* Secondary text */
---color-border: #333333 /* Borders */
---radius:
-
-12
-px
-
-/* Border radius */
+--color-primary: #10a37f;    /* Claude green */
+--color-nuxt: #00dc82;       /* Nuxt green */
+--color-bg: #0f0f0f;         /* Background */
+--color-bg-elevated: #1a1a1a; /* Cards */
+--color-text: #ffffff;       /* Primary text */
+--color-text-muted: #a0a0a0; /* Secondary text */
+--color-border: #333333;     /* Borders */
+--radius: 12px;              /* Border radius */
 ```
+
+## Overlay Mode
+
+The module supports a lightweight chat overlay that works without DevTools:
+
+```typescript
+// nuxt.config.ts
+claudeDevtools: {
+  overlay: { enabled: true }
+}
+```
+
+- **Toggle**: `Ctrl+Shift+K` or click the floating button
+- **Mobile**: Bottom sheet with swipe-to-close
+- **Draggable**: Move the button anywhere on screen
+
+## Collaborative Mode
+
+Share chat sessions with team members:
+
+1. Click **Share** button in the header
+2. Enter a nickname (required for collaboration)
+3. Share the link — others join the same session
+4. Messages sync in real-time
+
+Visual distinction:
+- Own messages: right side, green background
+- Other users: left side, purple background
 
 <!-- NUXT-DEVTOOLS:CRITICAL-FILES -->
 ## ⚠️ Critical Configuration Files
@@ -201,4 +194,3 @@ Step 4: Update nuxt.config.ts            ✓ only after confirmation
 ---
 After restart, conversation history is preserved. User can send "continue" to resume.
 <!-- /NUXT-DEVTOOLS:CRITICAL-FILES -->
-автоге

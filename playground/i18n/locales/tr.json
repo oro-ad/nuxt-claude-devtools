@@ -19,13 +19,17 @@
       "title": "Zengin Baglam",
       "description": "Gorunum boyutu, mevcut rota, tarayici bilgisi ve secili bilesenleri otomatik olarak iletir. Claude her zaman ne uzerinde calistiginizi bilir."
     },
+    "collab": {
+      "title": "Isbirligi Modu",
+      "description": "Dev sunucunuzu tunel ile paylasin (Cloudflare, ngrok). DEV_TUNNEL_HOST ayarlayin ve herhangi bir cihazdan birlikte calisin."
+    },
     "docs": {
       "title": "Proje Dokumanlari",
       "description": "{'@'}docs/ otomatik tamamlama ile proje dokumantasyonunuza basvurun. Claude baglamsal yanitlar vermek icin dokumanlarinizi okur."
     },
     "commands": {
       "title": "Slash Komutlari",
-      "description": "Hizli islemler icin /komutlar kullanin. Tekrarlayan gorevleri otomatiklestirmek icin .claude/commands/ icinde ozel komutlar olusturun."
+      "description": "Hizli islemler icin /commands kullanin. Tekrarlayan gorevleri otomatiklestirmek icin .claude/commands/ icinde ozel komutlar olusturun."
     },
     "mcp": {
       "title": "MCP Sunuculari",
@@ -42,6 +46,40 @@
     "voice": {
       "title": "Sesli Giris",
       "description": "Sorularinizi dogal olarak soyleyerek iletin. Birden fazla dil destegi ile ses tanima."
+    },
+    "plugins": {
+      "title": "Claude Code Eklentileri",
+      "description": "Claude Code eklentilerine dogrudan DevTools'tan erisin ve yonetin. Topluluk ve ozel eklentilerle islevi genisletin."
+    }
+  },
+  "collaborative": {
+    "badge": "Takim Ozelligi",
+    "title": "Isbirligi Modu",
+    "description": "Herhangi bir tunel cozumu (Cloudflare, ngrok, vb.) kullanin ve DEV_TUNNEL_HOST ayarlayin. nuxt-claude-devtools-bc modulu Vite'i otomatik olarak yapilandirir.",
+    "feature1": "Herhangi bir tunel saglayicisiyla calisir",
+    "feature2": "Otomatik Vite HMR yapilandirmasi",
+    "feature3": "Baglanti paylasin ve her yerden calisin",
+    "share_link": "Ekiple paylas",
+    "copy_host": "Host'u kopyala"
+  },
+  "modes": {
+    "section_title": "İki Çalışma Modu",
+    "section_subtitle": "İş akışınıza uygun modu seçin",
+    "light": {
+      "badge": "İş ve Tasarım İçin",
+      "title": "Hafif Mod",
+      "description": "Hızlı etkileşimler için hafif bir sohbet katmanı. Geliştirici araçları olmadan yapay zeka yardımı isteyen tasarımcılar, ürün yöneticileri ve iş kullanıcıları için mükemmel.",
+      "feature1": "Basit yüzen sohbet düğmesi",
+      "feature2": "DevTools açmadan çalışır",
+      "feature3": "Teknik olmayan kullanıcılar için ideal"
+    },
+    "devtools": {
+      "badge": "Geliştiriciler İçin",
+      "title": "DevTools Modu",
+      "description": "Nuxt DevTools ile tam entegrasyon. Claude Code uzantısını yönetin, gelişmiş özelliklere erişin ve derin kod tabanı bağlamı elde edin.",
+      "feature1": "Tam Claude Code entegrasyonu",
+      "feature2": "MCP sunucuları ve özel ajanlar",
+      "feature3": "Bileşen denetçisi ve hata ayıklama"
     }
   },
   "quickstart": {

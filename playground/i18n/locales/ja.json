@@ -19,13 +19,17 @@
       "title": "リッチコンテキスト",
       "description": "ビューポートサイズ、現在のルート、ブラウザ情報、選択したコンポーネントを自動的に渡します。Claudeは常にあなたの作業内容を把握しています。"
     },
+    "collab": {
+      "title": "コラボレーション",
+      "description": "トンネル（Cloudflare、ngrok）経由で開発サーバーを共有。DEV_TUNNEL_HOSTを設定し、どのデバイスからでも一緒に作業。"
+    },
     "docs": {
       "title": "プロジェクトドキュメント",
       "description": "{'@'}docs/オートコンプリートでドキュメントを参照。Claudeはドキュメントを読んでコンテキストに沿った回答を提供します。"
     },
     "commands": {
       "title": "スラッシュコマンド",
-      "description": "/コマンドでクイックアクション。.claude/commands/にカスタムコマンドを作成して繰り返しタスクを自動化。"
+      "description": "/commands でクイックアクション。.claude/commands/ にカスタムコマンドを作成して繰り返しタスクを自動化。"
     },
     "mcp": {
       "title": "MCPサーバー",
@@ -42,6 +46,40 @@
     "voice": {
       "title": "音声入力",
       "description": "質問を自然に話してください。複数言語対応の音声認識。"
+    },
+    "plugins": {
+      "title": "Claude Codeプラグイン",
+      "description": "DevToolsから直接Claude Codeプラグインにアクセスして管理。コミュニティプラグインやカスタムプラグインで機能を拡張。"
+    }
+  },
+  "collaborative": {
+    "badge": "チーム機能",
+    "title": "コラボレーションモード",
+    "description": "任意のトンネルソリューション（Cloudflare、ngrokなど）を使用し、DEV_TUNNEL_HOSTを設定。nuxt-claude-devtools-bcモジュールがViteを自動設定します。",
+    "feature1": "あらゆるトンネルプロバイダーに対応",
+    "feature2": "Vite HMRの自動設定",
+    "feature3": "リンクを共有してどこからでも作業",
+    "share_link": "チームと共有",
+    "copy_host": "ホストをコピー"
+  },
+  "modes": {
+    "section_title": "2つの作業モード",
+    "section_subtitle": "ワークフローに合ったモードを選択",
+    "light": {
+      "badge": "ビジネス＆デザイン向け",
+      "title": "ライトモード",
+      "description": "素早いやり取りのための軽量チャットオーバーレイ。開発者ツールなしでAI支援を求めるデザイナー、プロダクトマネージャー、ビジネスユーザーに最適。",
+      "feature1": "シンプルなフローティングチャットボタン",
+      "feature2": "DevToolsを開かずに動作",
+      "feature3": "非技術者に最適"
+    },
+    "devtools": {
+      "badge": "開発者向け",
+      "title": "DevToolsモード",
+      "description": "Nuxt DevToolsとの完全統合。Claude Code拡張機能を管理し、高度な機能にアクセスし、コードベースの深いコンテキストを取得。",
+      "feature1": "Claude Code完全統合",
+      "feature2": "MCPサーバーとカスタムエージェント",
+      "feature3": "コンポーネントインスペクターとデバッグ"
     }
   },
   "quickstart": {

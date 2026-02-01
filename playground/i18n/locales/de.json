@@ -19,13 +19,17 @@
       "title": "Reichhaltiger Kontext",
       "description": "Übergibt automatisch Viewport-Größe, aktuelle Route, Browser-Infos und ausgewählte Komponenten. Claude weiß immer, woran Sie arbeiten."
     },
+    "collab": {
+      "title": "Kollaborativer Modus",
+      "description": "Teilen Sie Ihren Dev-Server über Tunnel (Cloudflare, ngrok). Setzen Sie DEV_TUNNEL_HOST und arbeiten Sie gemeinsam von jedem Gerät."
+    },
     "docs": {
       "title": "Projektdokumentation",
       "description": "Referenzieren Sie Ihre Dokumentation mit {'@'}docs/ Autovervollständigung. Claude liest Ihre Docs für kontextbezogene Antworten."
     },
     "commands": {
       "title": "Slash-Befehle",
-      "description": "Verwenden Sie /befehle für schnelle Aktionen. Erstellen Sie benutzerdefinierte Befehle in .claude/commands/ um wiederkehrende Aufgaben zu automatisieren."
+      "description": "Verwenden Sie /commands für schnelle Aktionen. Erstellen Sie benutzerdefinierte Befehle in .claude/commands/ um wiederkehrende Aufgaben zu automatisieren."
     },
     "mcp": {
       "title": "MCP-Server",
@@ -42,6 +46,40 @@
     "voice": {
       "title": "Spracheingabe",
       "description": "Sprechen Sie Ihre Fragen natürlich. Spracherkennung mit Unterstützung für mehrere Sprachen."
+    },
+    "plugins": {
+      "title": "Claude Code Plugins",
+      "description": "Greifen Sie direkt von DevTools auf Claude Code Plugins zu und verwalten Sie diese. Erweitern Sie die Funktionalität mit Community- und eigenen Plugins."
+    }
+  },
+  "collaborative": {
+    "badge": "Team-Funktion",
+    "title": "Kollaborativer Modus",
+    "description": "Verwenden Sie eine beliebige Tunnel-Lösung (Cloudflare, ngrok usw.) und setzen Sie DEV_TUNNEL_HOST. Das Modul nuxt-claude-devtools-bc konfiguriert Vite automatisch.",
+    "feature1": "Funktioniert mit jedem Tunnel-Anbieter",
+    "feature2": "Automatische Vite HMR-Konfiguration",
+    "feature3": "Link teilen und von überall arbeiten",
+    "share_link": "Mit dem Team teilen",
+    "copy_host": "Host kopieren"
+  },
+  "modes": {
+    "section_title": "Zwei Arbeitsmodi",
+    "section_subtitle": "Wählen Sie den Modus, der zu Ihrem Workflow passt",
+    "light": {
+      "badge": "Für Business & Design",
+      "title": "Light-Modus",
+      "description": "Ein leichtgewichtiges Chat-Overlay für schnelle Interaktionen. Perfekt für Designer, Produktmanager und Business-Anwender, die KI-Unterstützung ohne Entwickler-Tools wollen.",
+      "feature1": "Einfacher schwebender Chat-Button",
+      "feature2": "Funktioniert ohne DevTools zu öffnen",
+      "feature3": "Ideal für nicht-technische Anwender"
+    },
+    "devtools": {
+      "badge": "Für Entwickler",
+      "title": "DevTools-Modus",
+      "description": "Vollständige Integration mit Nuxt DevTools. Verwalten Sie die Claude Code-Erweiterung, nutzen Sie erweiterte Funktionen und erhalten Sie tiefen Codebase-Kontext.",
+      "feature1": "Vollständige Claude Code Integration",
+      "feature2": "MCP-Server & benutzerdefinierte Agenten",
+      "feature3": "Komponenten-Inspektor & Debugging"
     }
   },
   "quickstart": {

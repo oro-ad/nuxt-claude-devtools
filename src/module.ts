@@ -1,4 +1,4 @@
-import { addServerPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
+import { addPlugin, addServerPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
 import { getTunnelConfig } from '@oro.ad/nuxt-claude-devtools-bc/tunnel'
 import { createLogger } from './runtime/logger'
 import { setupDevToolsUI } from './devtools'
@@ -16,11 +16,18 @@ export interface PluginsOptions {
   cachePath?: string
 }
 
+export interface OverlayOptions {
+  /** Enable the chat overlay (works without DevTools) */
+  enabled: boolean
+}
+
 export interface ModuleOptions {
   enabled: boolean
   debug: boolean
   claude: ClaudeOptions
   plugins?: PluginsOptions
+  /** Lightweight chat overlay that works without DevTools */
+  overlay?: OverlayOptions
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -36,6 +43,9 @@ export default defineNuxtModule<ModuleOptions>({
       args: [],
     },
     plugins: {},
+    overlay: {
+      enabled: false,
+    },
   },
   setup(options, nuxt) {
     // Only run in development mode
@@ -75,6 +85,7 @@ export default defineNuxtModule<ModuleOptions>({
       socketPath: SOCKET_PATH,
       tunnelOrigin: tunnel?.origin || null,
       debug: options?.debug || false,
+      overlay: options.overlay?.enabled || false,
     }
 
     // Add Nitro plugin for Socket.IO
@@ -87,7 +98,30 @@ export default defineNuxtModule<ModuleOptions>({
       destroyClaudeSession()
     })
 
-    // Setup DevTools UI
-    setupDevToolsUI(nuxt, resolver, { debug: options.debug })
+    // Setup DevTools UI (only if devtools is enabled)
+    if (nuxt.options.devtools?.enabled !== false) {
+      setupDevToolsUI(nuxt, resolver, { debug: options.debug })
+    }
+
+    // Setup Overlay (works independently of DevTools)
+    if (options.overlay?.enabled) {
+      log('Enabling chat overlay')
+
+      // Add overlay runtime to transpile
+      const runtimeDir = resolver.resolve('./runtime')
+      nuxt.options.build.transpile = nuxt.options.build.transpile || []
+      nuxt.options.build.transpile.push(runtimeDir)
+
+      // Ensure dependencies are optimized for the client
+      nuxt.options.vite = nuxt.options.vite || {}
+      nuxt.options.vite.optimizeDeps = nuxt.options.vite.optimizeDeps || {}
+      nuxt.options.vite.optimizeDeps.include = nuxt.options.vite.optimizeDeps.include || []
+      nuxt.options.vite.optimizeDeps.include.push('socket.io-client', 'marked')
+
+      addPlugin({
+        src: resolver.resolve('./runtime/overlay/plugin.client'),
+        mode: 'client',
+      })
+    }
   },
 })

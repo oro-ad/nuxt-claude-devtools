@@ -1,19 +1,17 @@
 /**
- * Client-side constants for nuxt-claude-devtools
- * Shared between client components and composables
+ * Shared constants for Claude DevTools
+ * Used by server, client, and overlay
  */
 
 // ============ Routes ============
 
 /**
  * Socket.IO endpoint path for real-time communication
- * Used by: useClaudeChat, all page components
  */
 export const SOCKET_PATH = '/__claude_devtools_socket'
 
 /**
  * DevTools UI iframe route
- * Used by: useComponentPicker
  */
 export const DEVTOOLS_UI_ROUTE = '/__claude-devtools'
 
@@ -21,13 +19,11 @@ export const DEVTOOLS_UI_ROUTE = '/__claude-devtools'
 
 /**
  * Unique user identifier for collaborative sessions
- * Stored in localStorage, generated on first visit
  */
 export const STORAGE_KEY_USER_ID = 'claude-devtools-user-id'
 
 /**
  * User's display name for collaborative sessions
- * Stored in localStorage after user sets nickname
  */
 export const STORAGE_KEY_NICKNAME = 'claude-devtools-nickname'
 
@@ -35,12 +31,10 @@ export const STORAGE_KEY_NICKNAME = 'claude-devtools-nickname'
 
 /**
  * URL parameter for sharing collaborative session links
- * Contains the invitee's unique ID
  */
 export const URL_PARAM_SHARE = 'oro_share'
 
 /**
  * URL parameter for auto-setting nickname from share link
- * If present, nickname is saved automatically without modal
  */
 export const URL_PARAM_SHARE_NICKNAME = 'oro_share_nickname'

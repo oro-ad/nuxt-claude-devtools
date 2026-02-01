@@ -35,7 +35,7 @@ export default defineNuxtConfig({
   ],
 
   devtools: {
-    enabled: true,
+    enabled: false,
   },
 
   compatibilityDate: '2024-08-21',
@@ -49,6 +49,9 @@ export default defineNuxtConfig({
       ],
     },
     debug: true,
+    overlay: {
+      enabled: true,
+    },
   },
 
   i18n: {

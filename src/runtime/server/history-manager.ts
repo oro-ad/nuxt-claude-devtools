@@ -95,10 +95,13 @@ export class HistoryManager {
     conversation.messages.push(message)
     conversation.updatedAt = new Date().toISOString()
 
-    // Auto-generate title from first user message
+    // Auto-generate title from first user message (strip context block)
     if (!conversation.title && message.role === 'user') {
-      conversation.title = message.content.substring(0, 50)
-        + (message.content.length > 50 ? '...' : '')
+      const content = message.content
+        .replace(/^\[context\]\n[\s\S]*?\n\[\/context\]\n?/, '')
+        .trim()
+      conversation.title = content.substring(0, 50)
+        + (content.length > 50 ? '...' : '')
     }
 
     this.saveStore()

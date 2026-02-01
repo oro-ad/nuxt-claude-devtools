@@ -9,18 +9,30 @@ Nuxt DevTools integration for [Claude Code](https://claude.ai/code) AI assistant
 
 ## Features
 
+### Core
 - **Chat Interface** — Interactive chat with Claude AI directly in DevTools
+- **Overlay Mode** — Lightweight floating chat panel that works without DevTools (`devtools: false`)
 - **Streaming Responses** — Real-time streaming output from Claude
-- **Context Chips** — Send viewport size, browser info, and routing context with messages
-- **Component Picker** — Select Vue components from the page to add as context
+- **Voice Input** — Speech-to-text for hands-free messaging
 - **Session Management** — Start new conversations or continue previous ones
 - **Chat History** — Browse and restore previous conversations
+
+### Context & Integration
+- **Context Chips** — Send viewport size, browser info, and routing context with messages
+- **Component Picker** — Select Vue components from the page to add as context
+- **LLMS Sources** — Configure external documentation URLs (llms.txt format)
+
+### Extensibility
 - **Skills** — Markdown-based skills to extend Claude's capabilities (`.claude/skills/<name>/SKILL.md`)
 - **Subagents** — Specialized AI agents for delegated tasks (`.claude/agents/<name>.md`)
 - **Slash Commands** — Custom commands with YAML frontmatter (`.claude/commands/<name>.md`)
 - **Documentation** — Manage project docs that Claude can reference (`.claude/docs/`)
 - **MCP Servers** — Manage Model Context Protocol servers (add, remove, list)
+
+### Collaboration & Access
+- **Collaborative Mode** — Share chat sessions with team members via link
 - **Tunnel Support** — Remote access via cloudflared tunnel
+- **Mobile Support** — Responsive bottom-sheet UI with swipe gestures
 
 ## Prerequisites
 
@@ -72,6 +84,29 @@ export default defineNuxtConfig({
 | `debug` | `boolean` | `false` | Enable debug logging in console |
 | `claude.command` | `string` | `'claude'` | Path to Claude CLI executable |
 | `claude.args` | `string[]` | `[]` | Additional arguments for Claude CLI |
+
+## Overlay Mode
+
+When you don't need full DevTools integration, use overlay mode for a lightweight chat experience:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['@oro.ad/nuxt-claude-devtools'],
+
+  devtools: {
+    enabled: false, // Disable DevTools
+  },
+
+  claudeDevtools: {
+    enabled: true,
+  },
+})
+```
+
+The overlay appears as a floating button (FAB) in the corner of your app:
+- **Desktop**: Draggable floating panel, `Ctrl+Shift+K` to toggle
+- **Mobile**: Full-width bottom sheet with swipe-to-close
+- **Features**: Voice input, slash commands, markdown rendering, collaborative sharing
 
 ## Usage
 
@@ -201,6 +236,34 @@ Example MCP servers:
 - **GitHub**: `npx -y @modelcontextprotocol/server-github`
 - **Nuxt UI**: `https://ui.nuxt.com/mcp` (HTTP)
 
+### Collaborative Mode
+
+Share your chat session with team members:
+
+1. Click the **Share** button in the chat header
+2. Enter a nickname (required for collaboration)
+3. Copy and share the generated link
+4. Team members opening the link join the same session
+
+Features:
+- Real-time message sync between all participants
+- Nicknames displayed on messages from other users
+- Own messages appear on the right (green), others on the left (purple)
+- Share links can include pre-set nicknames via `oro_share_nickname` URL parameter
+
+### LLMS Sources
+
+Configure external documentation URLs in llms.txt format:
+
+1. Go to the **Docs** tab in DevTools
+2. Add URLs to documentation sources
+3. Claude can fetch and use these when answering questions
+
+Supported formats:
+- Direct markdown URLs
+- llms.txt manifest files
+- API documentation endpoints
+
 ## Architecture
 
 ```
@@ -215,10 +278,22 @@ Example MCP servers:
 │  │  - /skills     Skills manager                     │  │
 │  │  - /agents     Subagents manager                  │  │
 │  │  - /commands   Slash commands manager             │  │
-│  │  - /docs       Documentation viewer               │  │
+│  │  - /docs       Documentation & LLMS sources       │  │
 │  │  - /mcp        MCP servers config                 │  │
+│  │  - /plugins    Plugin marketplace                 │  │
 │  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
+         │                              │
+         │ Socket.IO                    │ (or)
+         ▼                              ▼
+┌──────────────────────┐    ┌──────────────────────────────┐
+│    Chat Overlay      │    │   Multiple Clients           │
+│  (Floating Panel)    │    │   (Collaborative Mode)       │
+│                      │    │                              │
+│  - Desktop: Draggable│    │  Client A ◄──┐               │
+│  - Mobile: Bottom    │    │  Client B ◄──┼── Shared      │
+│    sheet with swipe  │    │  Client C ◄──┘   Session     │
+└──────────────────────┘    └──────────────────────────────┘
                           │
                           │ Socket.IO
                           ▼
@@ -226,15 +301,16 @@ Example MCP servers:
 │                  Claude Session Server                  │
 │  ┌─────────────────┐    ┌─────────────────────────────┐│
 │  │  Socket.IO Hub  │───▶│  Claude CLI Process         ││
-│  │                 │    │  (spawn with --continue)    ││
+│  │                 │    │  (spawn with --resume)      ││
 │  │  Managers:      │    └─────────────────────────────┘│
 │  │  - Skills       │                                   │
 │  │  - Agents       │    ┌─────────────────────────────┐│
 │  │  - Commands     │    │  File Storage               ││
-│  │  - Docs         │    │  .claude/skills/            ││
-│  │  - History      │    │  .claude/agents/            ││
-│  └─────────────────┘    │  .claude/commands/          ││
-│                         │  .claude/docs/              ││
+│  │  - Docs         │    │  .claude-devtools/          ││
+│  │  - History      │    │  .claude/skills/            ││
+│  │  - Share        │    │  .claude/agents/            ││
+│  │  - Plugins      │    │  .claude/commands/          ││
+│  └─────────────────┘    │  .claude/docs/              ││
 │                         └─────────────────────────────┘│
 └─────────────────────────────────────────────────────────┘
 ```
@@ -287,27 +363,43 @@ npm run lint
 │   ├── devtools.ts            # DevTools UI setup
 │   └── runtime/
 │       ├── logger.ts          # Logging utility
+│       ├── overlay/           # Lightweight chat overlay
+│       │   └── components/
+│       │       ├── ChatOverlay.vue    # Main overlay component
+│       │       ├── MarkdownContent.vue # Markdown renderer
+│       │       └── ToolCallBlock.vue  # Tool call display
+│       ├── shared/            # Shared code (overlay + client)
+│       │   ├── composables/
+│       │   │   ├── useClaudeChat.ts   # Chat logic
+│       │   │   ├── useVoiceInput.ts   # Speech recognition
+│       │   │   └── useShare.ts        # Collaborative sharing
+│       │   ├── types.ts       # TypeScript types
+│       │   └── constants.ts   # Shared constants
 │       └── server/
 │           ├── claude-session.ts   # Socket.IO server & Claude process
 │           ├── skills-manager.ts   # Skills CRUD operations
 │           ├── agents-manager.ts   # Agents CRUD operations
 │           ├── commands-manager.ts # Commands CRUD operations
-│           ├── docs-manager.ts     # Documentation management
-│           └── history-manager.ts  # Chat history management
+│           ├── docs-manager.ts     # Documentation & LLMS management
+│           ├── history-manager.ts  # Chat history management
+│           ├── share-manager.ts    # Collaborative session management
+│           └── plugins-manager.ts  # Plugin marketplace
 ├── client/                    # DevTools panel UI (Nuxt app)
 │   ├── pages/
 │   │   ├── index.vue          # Chat interface
 │   │   ├── skills.vue         # Skills manager
 │   │   ├── agents.vue         # Subagents manager
 │   │   ├── commands.vue       # Slash commands manager
-│   │   ├── docs.vue           # Documentation viewer
-│   │   └── mcp.vue            # MCP servers management
+│   │   ├── docs.vue           # Documentation & LLMS viewer
+│   │   ├── mcp.vue            # MCP servers management
+│   │   └── plugins.vue        # Plugin marketplace
 │   ├── composables/
 │   │   ├── useClaudeChat.ts   # Socket, messages, session
 │   │   ├── useMessageContext.ts # Context chips logic
 │   │   ├── useVoiceInput.ts   # Speech recognition
 │   │   ├── useAutocomplete.ts # Docs/commands autocomplete
-│   │   └── useComponentPicker.ts # Component selection
+│   │   ├── useComponentPicker.ts # Component selection
+│   │   └── useShare.ts        # Collaborative sharing
 │   └── nuxt.config.ts
 └── playground/                # Development playground
 ```

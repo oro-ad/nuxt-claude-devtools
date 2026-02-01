@@ -1,6 +1,6 @@
 /**
- * Shared types for Claude DevTools client
- * Note: Also defined in src/runtime/shared/types.ts for overlay
+ * Shared types for Claude DevTools
+ * Used by both DevTools client and Overlay
  */
 
 export interface ContentBlock {
@@ -28,13 +28,6 @@ export interface Message {
   senderNickname?: string
 }
 
-export interface ShareUser {
-  id: string
-  nickname: string
-  joinedAt: string
-  lastSeen: string
-}
-
 export interface Conversation {
   id: string
   title?: string
@@ -52,4 +45,11 @@ export interface DocFile {
 export interface SlashCommand {
   name: string
   description?: string
+}
+
+export interface ShareUser {
+  id: string
+  nickname: string
+  joinedAt: string
+  lastSeen: string
 }

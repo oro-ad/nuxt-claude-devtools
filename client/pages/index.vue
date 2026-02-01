@@ -111,6 +111,7 @@ const {
     log: log as (...args: unknown[]) => void,
     onDocsReceived: setDocs,
     onCommandsReceived: setCommands,
+    getCurrentUserId: () => userId.value,
   },
 )
 
@@ -341,7 +342,7 @@ onUnmounted(() => {
             class="flex items-center gap-1"
           >
             <NIcon icon="carbon:collaborate" />
-            {{ users.length }} online
+            {{ users.length }}
           </NBadge>
         </div>
         <div class="flex items-center gap-2">

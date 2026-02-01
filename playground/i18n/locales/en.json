@@ -19,6 +19,10 @@
       "title": "Rich Context",
       "description": "Automatically passes viewport size, current route, browser info, and selected components. Claude always knows what you're working on."
     },
+    "collab": {
+      "title": "Collaborative Mode",
+      "description": "Share your dev server via tunnel (Cloudflare, ngrok). Set DEV_TUNNEL_HOST and work together from any device."
+    },
     "docs": {
       "title": "Project Docs",
       "description": "Reference your project documentation with {'@'}docs/ autocomplete. Claude reads your docs to give contextual answers."
@@ -42,6 +46,40 @@
     "voice": {
       "title": "Voice Input",
       "description": "Speak your questions naturally. Voice recognition with support for multiple languages."
+    },
+    "plugins": {
+      "title": "Claude Code Plugins",
+      "description": "Access and manage Claude Code plugins directly from DevTools. Extend functionality with community and custom plugins."
+    }
+  },
+  "collaborative": {
+    "badge": "Team Feature",
+    "title": "Collaborative Mode",
+    "description": "Use any tunnel solution (Cloudflare, ngrok, etc.) and set DEV_TUNNEL_HOST. The nuxt-claude-devtools-bc module handles Vite configuration automatically.",
+    "feature1": "Works with any tunnel provider",
+    "feature2": "Automatic Vite HMR configuration",
+    "feature3": "Share link and work from any device",
+    "share_link": "Share with your team",
+    "copy_host": "Copy the host"
+  },
+  "modes": {
+    "section_title": "Two Ways to Work",
+    "section_subtitle": "Choose the mode that fits your workflow",
+    "light": {
+      "badge": "For Business & Design",
+      "title": "Light Mode",
+      "description": "A lightweight chat overlay for quick interactions. Perfect for designers, product managers, and business users who want AI assistance without developer tools.",
+      "feature1": "Simple floating chat button",
+      "feature2": "Works without opening DevTools",
+      "feature3": "Great for non-technical users"
+    },
+    "devtools": {
+      "badge": "For Developers",
+      "title": "DevTools Mode",
+      "description": "Full integration with Nuxt DevTools. Manage Claude Code extension, access advanced features, and get deep codebase context.",
+      "feature1": "Full Claude Code integration",
+      "feature2": "MCP servers & custom agents",
+      "feature3": "Component inspector & debugging"
     }
   },
   "quickstart": {

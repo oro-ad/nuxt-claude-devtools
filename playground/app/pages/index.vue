@@ -19,6 +19,12 @@ const features = computed(() => [
     description: t('features.context.description'),
   },
   {
+    icon: '👥',
+    key: 'collab',
+    title: t('features.collab.title'),
+    description: t('features.collab.description'),
+  },
+  {
     icon: '📚',
     key: 'docs',
     title: t('features.docs.title'),
@@ -54,6 +60,12 @@ const features = computed(() => [
     title: t('features.voice.title'),
     description: t('features.voice.description'),
   },
+  {
+    icon: '🧩',
+    key: 'plugins',
+    title: t('features.plugins.title'),
+    description: t('features.plugins.description'),
+  },
 ])
 
 const quickStart = computed(() => [
@@ -75,6 +87,8 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
     <div class="language-bar">
       <LanguageSwitcher />
     </div>
+
+    <!-- Животное: лис -->
 
     <!-- Hero Section -->
     <header class="hero">
@@ -171,6 +185,103 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
           <span class="feature-icon">{{ feature.icon }}</span>
           <h3>{{ feature.title }}</h3>
           <p>{{ feature.description }}</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Collaborative Section -->
+    <section class="collaborative">
+      <div class="collab-content">
+        <div class="collab-text">
+          <span class="collab-badge">{{ t('collaborative.badge') }}</span>
+          <h2>{{ t('collaborative.title') }}</h2>
+          <p class="collab-description">
+            {{ t('collaborative.description') }}
+          </p>
+          <ul class="collab-features">
+            <li>
+              <span class="collab-icon">🌐</span>
+              {{ t('collaborative.feature1') }}
+            </li>
+            <li>
+              <span class="collab-icon">🔗</span>
+              {{ t('collaborative.feature2') }}
+            </li>
+            <li>
+              <span class="collab-icon">📱</span>
+              {{ t('collaborative.feature3') }}
+            </li>
+          </ul>
+        </div>
+        <div class="collab-visual">
+          <div class="collab-demo">
+            <div class="demo-terminal">
+              <div class="terminal-header">
+                <span class="terminal-dot red" />
+                <span class="terminal-dot yellow" />
+                <span class="terminal-dot green" />
+                <span class="terminal-title">Terminal</span>
+              </div>
+              <div class="terminal-body">
+                <code><span class="terminal-prompt">$</span> cloudflared tunnel --url localhost:3000</code>
+                <code class="terminal-output terminal-link">https://abc-xyz.trycloudflare.com</code>
+                <code class="terminal-comment"># {{ t('collaborative.copy_host') }}</code>
+                <code><span class="terminal-prompt">$</span> DEV_TUNNEL_HOST=abc-xyz.trycloudflare.com npm run dev</code>
+              </div>
+            </div>
+            <div class="demo-share">
+              <span class="share-icon">📤</span>
+              <span class="share-text">{{ t('collaborative.share_link') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Modes Section -->
+    <section class="modes">
+      <h2>{{ t('modes.section_title') }}</h2>
+      <p class="section-subtitle">
+        {{ t('modes.section_subtitle') }}
+      </p>
+      <div class="modes-grid">
+        <div class="mode-card mode-light">
+          <div class="mode-badge">
+            {{ t('modes.light.badge') }}
+          </div>
+          <span class="mode-icon">✨</span>
+          <h3>{{ t('modes.light.title') }}</h3>
+          <p class="mode-description">
+            {{ t('modes.light.description') }}
+          </p>
+          <ul class="mode-features">
+            <li>{{ t('modes.light.feature1') }}</li>
+            <li>{{ t('modes.light.feature2') }}</li>
+            <li>{{ t('modes.light.feature3') }}</li>
+          </ul>
+          <div class="mode-code">
+            <span class="code-label">nuxt.config.ts</span>
+            <code>claudeDevtools: { overlay: { enabled: true } }</code>
+          </div>
+        </div>
+        <div class="mode-card mode-devtools">
+          <div class="mode-badge">
+            {{ t('modes.devtools.badge') }}
+          </div>
+          <span class="mode-icon">🛠️</span>
+          <h3>{{ t('modes.devtools.title') }}</h3>
+          <p class="mode-description">
+            {{ t('modes.devtools.description') }}
+          </p>
+          <ul class="mode-features">
+            <li>{{ t('modes.devtools.feature1') }}</li>
+            <li>{{ t('modes.devtools.feature2') }}</li>
+            <li>{{ t('modes.devtools.feature3') }}</li>
+          </ul>
+          <div class="mode-code">
+            <span class="code-label">nuxt.config.ts</span>
+            <code>devtools: { enabled: true }</code>
+          </div>
         </div>
       </div>
     </section>
@@ -541,6 +652,290 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   line-height: 1.5;
 }
 
+/* Collaborative Section */
+.collaborative {
+  padding: 100px 40px;
+  background: linear-gradient(135deg, rgba(16, 163, 127, 0.05) 0%, rgba(0, 220, 130, 0.05) 100%);
+}
+
+.collab-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.collab-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-nuxt));
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+}
+
+.collab-text h2 {
+  font-size: 40px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #fff 0%, #a0a0a0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.collab-description {
+  font-size: 18px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.collab-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.collab-features li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.collab-icon {
+  font-size: 20px;
+}
+
+.collab-visual {
+  display: flex;
+  justify-content: center;
+}
+
+.collab-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.demo-terminal {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  min-width: 360px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--color-bg-card);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #ff5f57; }
+.terminal-dot.yellow { background: #ffbd2e; }
+.terminal-dot.green { background: #28ca41; }
+
+.terminal-title {
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.terminal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.terminal-body code {
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.terminal-prompt {
+  color: var(--color-nuxt);
+  margin-right: 8px;
+}
+
+.terminal-output {
+  color: var(--color-text-muted);
+  padding-left: 16px;
+}
+
+.terminal-link {
+  color: var(--color-primary) !important;
+}
+
+.terminal-comment {
+  color: #6b7280 !important;
+  font-style: italic;
+}
+
+.demo-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: var(--color-bg-elevated);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+}
+
+.share-icon {
+  font-size: 20px;
+}
+
+.share-text {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* Modes Section */
+.modes {
+  padding: 100px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.modes h2 {
+  font-size: 40px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.modes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+  margin-top: 48px;
+}
+
+.mode-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 32px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.mode-card:hover {
+  transform: translateY(-4px);
+}
+
+.mode-light:hover {
+  border-color: #f59e0b;
+}
+
+.mode-devtools:hover {
+  border-color: var(--color-nuxt);
+}
+
+.mode-badge {
+  position: absolute;
+  top: -12px;
+  left: 24px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mode-light .mode-badge {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.mode-devtools .mode-badge {
+  background: linear-gradient(135deg, var(--color-nuxt), #00b368);
+  color: white;
+}
+
+.mode-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.mode-card h3 {
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.mode-description {
+  color: var(--color-text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.mode-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+}
+
+.mode-features li {
+  position: relative;
+  padding-left: 24px;
+  margin-bottom: 10px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.mode-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.mode-code {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+
+.mode-code .code-label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mode-code code {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  color: var(--color-nuxt);
+}
+
 /* Quick Start Section */
 .quickstart {
   padding: 100px 40px;
@@ -676,6 +1071,57 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .collab-content {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .collab-features {
+    display: inline-block;
+    text-align: left;
+  }
+
+  .collab-visual {
+    order: -1;
+  }
+
+  .modes-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .collaborative {
+    padding: 60px 16px;
+  }
+
+  .collab-text h2 {
+    font-size: 28px;
+  }
+
+  .demo-terminal {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .modes {
+    padding: 60px 16px;
+  }
+
+  .mode-card {
+    padding: 24px;
+  }
+
+  .mode-icon {
+    font-size: 36px;
+  }
+
+  .mode-card h3 {
+    font-size: 20px;
   }
 }
 

@@ -19,13 +19,17 @@
       "title": "Contexte riche",
       "description": "Transmet automatiquement la taille du viewport, la route actuelle, les infos du navigateur et les composants sélectionnés. Claude sait toujours sur quoi vous travaillez."
     },
+    "collab": {
+      "title": "Mode Collaboratif",
+      "description": "Partagez votre serveur de dev via tunnel (Cloudflare, ngrok). Définissez DEV_TUNNEL_HOST et travaillez ensemble depuis n'importe quel appareil."
+    },
     "docs": {
       "title": "Documentation projet",
       "description": "Référencez la documentation de votre projet avec l'autocomplétion {'@'}docs/. Claude lit vos docs pour donner des réponses contextuelles."
     },
     "commands": {
       "title": "Commandes slash",
-      "description": "Utilisez les /commandes pour des actions rapides. Créez des commandes personnalisées dans .claude/commands/ pour automatiser les tâches répétitives."
+      "description": "Utilisez /commands pour des actions rapides. Créez des commandes personnalisées dans .claude/commands/ pour automatiser les tâches répétitives."
     },
     "mcp": {
       "title": "Serveurs MCP",
@@ -42,6 +46,40 @@
     "voice": {
       "title": "Entrée vocale",
       "description": "Posez vos questions naturellement à l'oral. Reconnaissance vocale avec support multilingue."
+    },
+    "plugins": {
+      "title": "Plugins Claude Code",
+      "description": "Accédez et gérez les plugins Claude Code directement depuis DevTools. Étendez les fonctionnalités avec des plugins communautaires et personnalisés."
+    }
+  },
+  "collaborative": {
+    "badge": "Fonctionnalité Équipe",
+    "title": "Mode Collaboratif",
+    "description": "Utilisez n'importe quelle solution de tunnel (Cloudflare, ngrok, etc.) et définissez DEV_TUNNEL_HOST. Le module nuxt-claude-devtools-bc configure Vite automatiquement.",
+    "feature1": "Fonctionne avec tout fournisseur de tunnels",
+    "feature2": "Configuration automatique de Vite HMR",
+    "feature3": "Partagez le lien et travaillez de partout",
+    "share_link": "Partager avec l'équipe",
+    "copy_host": "Copiez l'hôte"
+  },
+  "modes": {
+    "section_title": "Deux façons de travailler",
+    "section_subtitle": "Choisissez le mode adapté à votre workflow",
+    "light": {
+      "badge": "Pour Business & Design",
+      "title": "Mode Léger",
+      "description": "Une superposition de chat légère pour des interactions rapides. Parfait pour les designers, chefs de produit et utilisateurs métier qui veulent l'aide de l'IA sans les outils développeur.",
+      "feature1": "Simple bouton de chat flottant",
+      "feature2": "Fonctionne sans ouvrir DevTools",
+      "feature3": "Idéal pour les utilisateurs non techniques"
+    },
+    "devtools": {
+      "badge": "Pour Développeurs",
+      "title": "Mode DevTools",
+      "description": "Intégration complète avec Nuxt DevTools. Gérez l'extension Claude Code, accédez aux fonctionnalités avancées et obtenez un contexte profond du code.",
+      "feature1": "Intégration complète Claude Code",
+      "feature2": "Serveurs MCP et agents personnalisés",
+      "feature3": "Inspecteur de composants et débogage"
     }
   },
   "quickstart": {
