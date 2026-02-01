@@ -439,6 +439,16 @@ onUnmounted(() => {
                 />
                 Agents
               </NuxtLink>
+              <NuxtLink
+                class="flex items-center gap-2 px-3 py-2 hover:n-bg-active transition-colors"
+                to="/plugins"
+              >
+                <NIcon
+                  class="text-cyan-500"
+                  icon="carbon:application"
+                />
+                Plugins
+              </NuxtLink>
               <div class="border-t border-neutral-200 dark:border-neutral-700 my-1" />
               <NuxtLink
                 class="flex items-center gap-2 px-3 py-2 hover:n-bg-active transition-colors"

@@ -3,7 +3,7 @@
  * List item for CRUD pages with selection state, icon, and delete button
  */
 
-defineProps<{
+const props = defineProps<{
   /** Whether this item is selected */
   selected: boolean
   /** Icon for the item (carbon icon name) */
@@ -18,7 +18,13 @@ defineProps<{
   monoName?: boolean
   /** Prefix for the name (e.g., "/" for commands) */
   namePrefix?: string
+  /** Source of the item (e.g., 'project' or plugin name) */
+  source?: string
+  /** If true, item is read-only (no delete button) */
+  readonly?: boolean
 }>()
+
+const isFromPlugin = computed(() => props.source && props.source !== 'project')
 
 defineEmits<{
   select: []
@@ -31,7 +37,7 @@ defineEmits<{
     :class="[
       selected ? `n-bg-active ring-1 ring-${color}-500` : 'hover:n-bg-active',
     ]"
-    class="rounded-lg p-2 cursor-pointer group"
+    class="rounded-lg p-2 cursor-pointer group w-full overflow-hidden"
     @click="$emit('select')"
   >
     <div class="flex items-center justify-between">
@@ -45,6 +51,7 @@ defineEmits<{
         </span>
       </div>
       <NButton
+        v-if="!readonly && !isFromPlugin"
         class="opacity-0 group-hover:opacity-100"
         n="red xs"
         @click.stop="$emit('delete')"
@@ -57,6 +64,27 @@ defineEmits<{
       class="text-xs opacity-50 pl-6 truncate line-clamp-2"
     >
       {{ description }}
+    </div>
+    <!-- Plugin source badge -->
+    <div
+      v-if="isFromPlugin"
+      class="pl-6 mt-1"
+    >
+      <NuxtLink
+        :to="`/plugins/${source}`"
+        @click.stop
+      >
+        <NBadge
+          class="text-xs cursor-pointer hover:opacity-80 transition-opacity"
+          n="cyan"
+        >
+          <NIcon
+            class="mr-1"
+            icon="carbon:application"
+          />
+          {{ source }}
+        </NBadge>
+      </NuxtLink>
     </div>
     <!-- Extra content slot for badges etc -->
     <slot name="extra" />

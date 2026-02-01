@@ -10,7 +10,7 @@ defineProps<{
   /** Icon for the page (carbon icon name) */
   icon: string
   /** Color theme */
-  color: 'purple' | 'orange' | 'green' | 'blue'
+  color: 'purple' | 'orange' | 'green' | 'blue' | 'cyan'
   /** Show connection badge */
   showConnectionBadge?: boolean
   /** Whether connected (for badge) */
@@ -35,7 +35,7 @@ defineProps<{
         </NuxtLink>
         <h1 class="text-xl font-bold flex items-center gap-2">
           <NIcon
-            :class="`text-${color}`"
+            :class="`text-${color}-500`"
             :icon="icon"
           />
           {{ title }}

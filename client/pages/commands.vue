@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useCrudResource } from '~/composables/useCrudResource'
 
 interface SlashCommand {
@@ -10,6 +12,7 @@ interface SlashCommand {
   content: string
   rawContent: string
   updatedAt: string
+  source?: string
 }
 
 interface CommandFormData {
@@ -19,18 +22,19 @@ interface CommandFormData {
   allowedTools: string
 }
 
+const route = useRoute()
+const router = useRouter()
+
 const {
   isConnected,
   isLoading,
   items: commands,
-  selectedItem: selectedCommand,
   isEditing,
   showNewForm,
   formError,
   newForm: newCommand,
   editForm: editCommand,
   load: loadCommands,
-  select: selectCommand,
   startEditing,
   save: saveCommand,
   cancelEditing,
@@ -76,8 +80,29 @@ const {
   },
 })
 
+// Computed selected command from route param
+const selectedCommand = computed(() => {
+  const name = route.params.name as string | undefined
+  if (!name) return null
+  return commands.value.find(c => c.name === name) || null
+})
+
+function selectCommand(command: SlashCommand) {
+  showNewForm.value = false
+  router.push(`/commands/${command.name}`)
+}
+
 function handleDelete(name: string) {
   deleteItem(name, `Delete command "/${name}"?`)
+}
+
+function handleShowNew() {
+  showNew()
+  router.push('/commands')
+}
+
+function handleCancelNew() {
+  showNewForm.value = false
 }
 </script>
 
@@ -93,7 +118,7 @@ function handleDelete(name: string) {
     empty-message="No slash commands yet. Create one to get started."
     empty-editor-message="Select a command or create a new one"
     new-button-label="New Command"
-    @new="showNew"
+    @new="handleShowNew"
     @refresh="loadCommands"
   >
     <!-- List -->
@@ -114,6 +139,7 @@ function handleDelete(name: string) {
           :selected="selectedCommand?.name === cmd.name"
           :name="cmd.name"
           :description="cmd.description"
+          :source="cmd.source"
           icon="carbon:terminal"
           color="green"
           mono-name
@@ -124,7 +150,7 @@ function handleDelete(name: string) {
       </div>
     </template>
 
-    <!-- Editor -->
+    <!-- Editor via NuxtPage -->
     <template #editor>
       <!-- Create Mode -->
       <CommandForm
@@ -133,55 +159,21 @@ function handleDelete(name: string) {
         mode="create"
         :error="formError"
         @save="saveCommand"
-        @cancel="showNewForm = false"
+        @cancel="handleCancelNew"
       />
 
-      <!-- View/Edit Mode -->
-      <template v-else-if="selectedCommand">
-        <CrudEditorHeader
-          :title="`/${selectedCommand.name}`"
-          :description="selectedCommand.description"
-          :is-editing="isEditing"
-          mono-title
-          @edit="startEditing"
-          @save="saveCommand"
-          @cancel="cancelEditing"
-        >
-          <template #subtitle>
-            <div class="text-xs opacity-50 mt-1">
-              Updated: {{ formatDate(selectedCommand.updatedAt) }}
-            </div>
-          </template>
-        </CrudEditorHeader>
-
-        <!-- Edit Mode -->
-        <CommandForm
-          v-if="isEditing"
-          v-model="editCommand"
-          mode="edit"
-          :error="formError"
-        />
-
-        <!-- View Mode -->
-        <CommandView
-          v-else
-          :command="selectedCommand"
-        />
-      </template>
-
-      <!-- Empty State -->
-      <div
+      <!-- View/Edit via child route -->
+      <NuxtPage
         v-else
-        class="flex-1 flex items-center justify-center opacity-50"
-      >
-        <div class="text-center">
-          <NIcon
-            class="text-4xl mb-2"
-            icon="carbon:terminal"
-          />
-          <p>Select a command or create a new one</p>
-        </div>
-      </div>
+        :command="selectedCommand"
+        :is-editing="isEditing"
+        :edit-form="editCommand"
+        :form-error="formError"
+        :format-date="formatDate"
+        @start-editing="startEditing"
+        @save="saveCommand"
+        @cancel="cancelEditing"
+      />
     </template>
   </CrudPageLayout>
 </template>

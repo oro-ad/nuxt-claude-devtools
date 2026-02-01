@@ -15,6 +15,7 @@ export default defineNitroPlugin((nitroApp: NitroApp) => {
     claude: { command: string, args: string[] }
     rootDir: string
     tunnelOrigin?: string | null
+    pluginsCachePath?: string | null
   } | undefined
 
   if (!claudeConfig) {
@@ -30,6 +31,7 @@ export default defineNitroPlugin((nitroApp: NitroApp) => {
     args: claudeConfig.claude.args,
     rootDir: claudeConfig.rootDir,
     tunnelOrigin: claudeConfig.tunnelOrigin || null,
+    pluginsCachePath: claudeConfig.pluginsCachePath || null,
   })
 
   const engine = new Engine()

@@ -13,6 +13,8 @@ export interface SlashCommand {
   content: string
   rawContent: string
   updatedAt: string
+  /** Source of the command: 'project' for local .claude/, or plugin name */
+  source?: string
 }
 
 interface CommandFrontmatter {

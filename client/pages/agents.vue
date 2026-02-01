@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useCrudResource } from '~/composables/useCrudResource'
 
 interface Agent {
@@ -11,6 +12,7 @@ interface Agent {
   tools?: string[]
   skills?: string[]
   updatedAt: string
+  source?: string
 }
 
 interface AgentFormData {
@@ -22,20 +24,20 @@ interface AgentFormData {
   skills: string[]
 }
 
+const route = useRoute()
+const router = useRouter()
 const availableSkills = ref<string[]>([])
 
 const {
   isConnected,
   isLoading,
   items: agents,
-  selectedItem: selectedAgent,
   isEditing,
   showNewForm,
   formError,
   newForm: newAgent,
   editForm: editAgent,
   load: loadAgents,
-  select: selectAgent,
   startEditing,
   save: saveAgent,
   cancelEditing,
@@ -101,8 +103,29 @@ const {
   },
 })
 
+// Computed selected agent from route param
+const selectedAgent = computed(() => {
+  const name = route.params.name as string | undefined
+  if (!name) return null
+  return agents.value.find(a => a.name === name) || null
+})
+
+function selectAgent(agent: Agent) {
+  showNewForm.value = false
+  router.push(`/agents/${agent.name}`)
+}
+
 function handleDelete(name: string) {
   deleteItem(name, `Delete agent "${name}"?`)
+}
+
+function handleShowNew() {
+  showNew()
+  router.push('/agents')
+}
+
+function handleCancelNew() {
+  showNewForm.value = false
 }
 
 function loadSkillNames() {
@@ -122,7 +145,7 @@ function loadSkillNames() {
     new-button-label="New Agent"
     storage-path=".claude/agents/<name>.md"
     title="Subagents"
-    @new="showNew"
+    @new="handleShowNew"
     @refresh="loadAgents(); loadSkillNames()"
   >
     <!-- List -->
@@ -143,6 +166,7 @@ function loadSkillNames() {
           :description="agent.description"
           :name="agent.name"
           :selected="selectedAgent?.name === agent.name"
+          :source="agent.source"
           color="purple"
           icon="carbon:bot"
           @delete="handleDelete(agent.name)"
@@ -170,7 +194,7 @@ function loadSkillNames() {
       </div>
     </template>
 
-    <!-- Editor -->
+    <!-- Editor via NuxtPage -->
     <template #editor>
       <!-- Create Mode -->
       <AgentForm
@@ -179,54 +203,23 @@ function loadSkillNames() {
         :available-skills="availableSkills"
         :error="formError"
         mode="create"
-        @cancel="showNewForm = false"
+        @cancel="handleCancelNew"
         @save="saveAgent"
       />
 
-      <!-- View/Edit Mode -->
-      <template v-else-if="selectedAgent">
-        <CrudEditorHeader
-          :description="selectedAgent.description"
-          :is-editing="isEditing"
-          :title="selectedAgent.name"
-          icon="carbon:bot"
-          icon-color="text-purple-500"
-          show-icon
-          @cancel="cancelEditing"
-          @edit="startEditing"
-          @save="saveAgent"
-        />
-
-        <!-- Edit Mode -->
-        <AgentForm
-          v-if="isEditing"
-          v-model="editAgent"
-          :available-skills="availableSkills"
-          :error="formError"
-          mode="edit"
-        />
-
-        <!-- View Mode -->
-        <AgentView
-          v-else
-          :agent="selectedAgent"
-          :formatted-date="formatDate(selectedAgent.updatedAt)"
-        />
-      </template>
-
-      <!-- Empty State -->
-      <div
+      <!-- View/Edit via child route -->
+      <NuxtPage
         v-else
-        class="flex-1 flex items-center justify-center opacity-50"
-      >
-        <div class="text-center">
-          <NIcon
-            class="text-4xl mb-2"
-            icon="carbon:bot"
-          />
-          <p>Select an agent or create a new one</p>
-        </div>
-      </div>
+        :agent="selectedAgent"
+        :is-editing="isEditing"
+        :edit-form="editAgent"
+        :form-error="formError"
+        :format-date="formatDate"
+        :available-skills="availableSkills"
+        @start-editing="startEditing"
+        @save="saveAgent"
+        @cancel="cancelEditing"
+      />
     </template>
   </CrudPageLayout>
 </template>

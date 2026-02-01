@@ -18,9 +18,14 @@ withDefaults(defineProps<{
   showIcon?: boolean
   /** Whether title is mono font */
   monoTitle?: boolean
+  /** If true, hide edit/save/cancel buttons (for plugin items) */
+  readonly?: boolean
+  /** Optional source label (e.g., plugin name) */
+  source?: string
 }>(), {
   iconColor: '',
   showIcon: false,
+  readonly: false,
 })
 
 defineEmits<{
@@ -43,6 +48,22 @@ defineEmits<{
           :icon="icon"
         />
         {{ title }}
+        <NuxtLink
+          v-if="source && source !== 'project'"
+          :to="`/plugins/${source}`"
+          class="hover:opacity-80 transition-opacity"
+        >
+          <NBadge
+            class="text-xs cursor-pointer"
+            n="cyan"
+          >
+            <NIcon
+              class="mr-1"
+              icon="carbon:application"
+            />
+            {{ source }}
+          </NBadge>
+        </NuxtLink>
       </h3>
       <div
         v-if="description"
@@ -52,7 +73,10 @@ defineEmits<{
       </div>
       <slot name="subtitle" />
     </div>
-    <div class="flex gap-2">
+    <div
+      v-if="!readonly"
+      class="flex gap-2"
+    >
       <template v-if="isEditing">
         <NButton
           n="green"

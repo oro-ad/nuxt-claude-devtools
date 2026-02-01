@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useCrudResource } from '~/composables/useCrudResource'
 
 interface Skill {
@@ -9,6 +11,7 @@ interface Skill {
   argumentHint?: string
   model?: string
   updatedAt: string
+  source?: string
 }
 
 interface SkillFormData {
@@ -19,18 +22,19 @@ interface SkillFormData {
   model: string
 }
 
+const route = useRoute()
+const router = useRouter()
+
 const {
   isConnected,
   isLoading,
   items: skills,
-  selectedItem: selectedSkill,
   isEditing,
   showNewForm,
   formError,
   newForm: newSkill,
   editForm: editSkill,
   load: loadSkills,
-  select: selectSkill,
   startEditing,
   save: saveSkill,
   cancelEditing,
@@ -73,8 +77,30 @@ const {
   }),
 })
 
+// Computed selected skill from route param
+const selectedSkill = computed(() => {
+  const name = route.params.name as string | undefined
+  if (!name) return null
+  return skills.value.find(s => s.name === name) || null
+})
+
+// Select skill by navigating
+function selectSkill(skill: Skill) {
+  showNewForm.value = false
+  router.push(`/skills/${skill.name}`)
+}
+
 function handleDelete(name: string) {
   deleteItem(name, `Delete skill "${name}"?`)
+}
+
+function handleShowNew() {
+  showNew()
+  router.push('/skills')
+}
+
+function handleCancelNew() {
+  showNewForm.value = false
 }
 </script>
 
@@ -90,7 +116,7 @@ function handleDelete(name: string) {
     empty-message="No skills configured yet. Create one to get started."
     empty-editor-message="Select a skill or create a new one"
     new-button-label="New Skill"
-    @new="showNew"
+    @new="handleShowNew"
     @refresh="loadSkills"
   >
     <!-- List -->
@@ -111,6 +137,7 @@ function handleDelete(name: string) {
           :selected="selectedSkill?.name === skill.name"
           :name="skill.name"
           :description="skill.description"
+          :source="skill.source"
           icon="carbon:lightning"
           color="orange"
           @select="selectSkill(skill)"
@@ -119,7 +146,7 @@ function handleDelete(name: string) {
       </div>
     </template>
 
-    <!-- Editor -->
+    <!-- Editor via NuxtPage -->
     <template #editor>
       <!-- Create Mode -->
       <SkillForm
@@ -128,52 +155,21 @@ function handleDelete(name: string) {
         mode="create"
         :error="formError"
         @save="saveSkill"
-        @cancel="showNewForm = false"
+        @cancel="handleCancelNew"
       />
 
-      <!-- View/Edit Mode -->
-      <template v-else-if="selectedSkill">
-        <CrudEditorHeader
-          :title="selectedSkill.name"
-          :description="selectedSkill.description"
-          :is-editing="isEditing"
-          icon="carbon:lightning"
-          icon-color="text-orange-500"
-          show-icon
-          @edit="startEditing"
-          @save="saveSkill"
-          @cancel="cancelEditing"
-        />
-
-        <!-- Edit Mode -->
-        <SkillForm
-          v-if="isEditing"
-          v-model="editSkill"
-          mode="edit"
-          :error="formError"
-        />
-
-        <!-- View Mode -->
-        <SkillView
-          v-else
-          :skill="selectedSkill"
-          :formatted-date="formatDate(selectedSkill.updatedAt)"
-        />
-      </template>
-
-      <!-- Empty State -->
-      <div
+      <!-- View/Edit via child route -->
+      <NuxtPage
         v-else
-        class="flex-1 flex items-center justify-center opacity-50"
-      >
-        <div class="text-center">
-          <NIcon
-            class="text-4xl mb-2"
-            icon="carbon:lightning"
-          />
-          <p>Select a skill or create a new one</p>
-        </div>
-      </div>
+        :skill="selectedSkill"
+        :is-editing="isEditing"
+        :edit-form="editSkill"
+        :form-error="formError"
+        :format-date="formatDate"
+        @start-editing="startEditing"
+        @save="saveSkill"
+        @cancel="cancelEditing"
+      />
     </template>
   </CrudPageLayout>
 </template>

@@ -15,6 +15,8 @@ export interface Agent {
   permissionMode?: 'default' | 'acceptEdits' | 'dontAsk' | 'bypassPermissions' | 'plan'
   skills?: string[]
   updatedAt: string
+  /** Source of the agent: 'project' for local .claude/, or plugin name */
+  source?: string
 }
 
 interface AgentFrontmatter {

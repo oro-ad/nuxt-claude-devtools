@@ -11,10 +11,16 @@ export interface ClaudeOptions {
   args: string[]
 }
 
+export interface PluginsOptions {
+  /** Path to Claude plugins cache directory. Defaults to ~/.claude/plugins/cache */
+  cachePath?: string
+}
+
 export interface ModuleOptions {
   enabled: boolean
   debug: boolean
   claude: ClaudeOptions
+  plugins?: PluginsOptions
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -29,6 +35,7 @@ export default defineNuxtModule<ModuleOptions>({
       command: 'claude',
       args: [],
     },
+    plugins: {},
   },
   setup(options, nuxt) {
     // Only run in development mode
@@ -60,6 +67,7 @@ export default defineNuxtModule<ModuleOptions>({
       claude: options.claude,
       rootDir: nuxt.options.rootDir,
       tunnelOrigin: tunnel?.origin || null,
+      pluginsCachePath: options.plugins?.cachePath || null,
     }
 
     // Expose tunnel info to client via public runtime config

@@ -17,6 +17,8 @@ export interface Skill {
   context?: 'fork'
   agent?: string
   updatedAt: string
+  /** Source of the skill: 'project' for local .claude/, or plugin name */
+  source?: string
 }
 
 interface SkillFrontmatter {

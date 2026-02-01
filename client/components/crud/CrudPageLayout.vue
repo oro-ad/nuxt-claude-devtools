@@ -71,7 +71,7 @@ defineEmits<{
     <!-- CRUD Content: Sidebar + Editor -->
     <div class="flex gap-4 h-full">
       <!-- Sidebar List -->
-      <div class="w-68 flex-shrink-0 space-y-4 overflow-hidden px-1">
+      <div class="w-68 max-w-68 flex-shrink-0 space-y-4 overflow-hidden px-1 overflow-y-auto">
         <!-- Info Tip -->
         <NTip
           v-if="infoTip"

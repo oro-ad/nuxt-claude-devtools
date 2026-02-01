@@ -90,3 +90,33 @@ export const LLMS_FILE = 'llms.json'
  * Default extension for markdown resources
  */
 export const MD_EXTENSION = '.md'
+
+// ============ Plugin System ============
+
+/**
+ * Default plugins cache directory (relative to user home)
+ * Path: ~/.claude/plugins/cache
+ */
+export const DEFAULT_PLUGINS_CACHE_PATH = '.claude/plugins/cache'
+
+/**
+ * Plugin manifest directory name inside plugin root
+ */
+export const PLUGIN_MANIFEST_DIR = '.claude-plugin'
+
+/**
+ * Plugin manifest file name
+ */
+export const PLUGIN_MANIFEST_FILE = 'plugin.json'
+
+/**
+ * Claude settings file (for reading enabled plugins)
+ * Path: ~/.claude/settings.json (user scope)
+ */
+export const CLAUDE_SETTINGS_FILE = 'settings.json'
+
+/**
+ * Claude local settings file (project scope, gitignored)
+ * Path: .claude/settings.local.json
+ */
+export const CLAUDE_SETTINGS_LOCAL_FILE = 'settings.local.json'

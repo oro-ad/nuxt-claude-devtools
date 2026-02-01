@@ -5,6 +5,7 @@ import { AgentsManager } from './agents-manager'
 import { CommandsManager } from './commands-manager'
 import { DocsManager, getCriticalFileName, isCriticalFile } from './docs-manager'
 import { HistoryManager } from './history-manager'
+import { PluginsManager } from './plugins-manager'
 import { SettingsManager } from './settings-manager'
 import { ShareManager } from './share-manager'
 import { SkillsManager } from './skills-manager'
@@ -66,6 +67,7 @@ export interface ClaudeSessionConfig {
   args: string[]
   rootDir: string
   tunnelOrigin?: string | null
+  pluginsCachePath?: string | null
 }
 
 export class ClaudeSession {
@@ -80,6 +82,7 @@ export class ClaudeSession {
   private skillsManager: SkillsManager
   private settingsManager: SettingsManager
   private shareManager: ShareManager
+  private pluginsManager: PluginsManager
 
   // Claude CLI session ID (in-memory only, lost on hot-reload)
   private claudeSessionId: string | null = null
@@ -103,6 +106,7 @@ export class ClaudeSession {
     this.skillsManager = new SkillsManager(config.rootDir)
     this.settingsManager = new SettingsManager(config.rootDir)
     this.shareManager = new ShareManager(config.rootDir)
+    this.pluginsManager = new PluginsManager(config.rootDir, config.pluginsCachePath)
   }
 
   attachSocketIO(io: SocketServer) {
@@ -286,8 +290,22 @@ export class ClaudeSession {
       // Commands (Slash Commands / Skills) Management
       socket.on('commands:list', () => {
         log('Commands list requested')
-        const commands = this.commandsManager.getCommands()
-        socket.emit('commands:list', commands)
+        // Get project commands
+        const projectCommands = this.commandsManager.getCommands().map(cmd => ({
+          ...cmd,
+          source: 'project',
+        }))
+        // Get plugin commands
+        const pluginCommands = this.pluginsManager.getAllPluginCommands().map(cmd => ({
+          name: cmd.fullName,
+          path: `plugin:${cmd.pluginName}/${cmd.name}.md`,
+          description: cmd.description,
+          content: cmd.content,
+          rawContent: cmd.content,
+          updatedAt: new Date().toISOString(),
+          source: cmd.pluginName,
+        }))
+        socket.emit('commands:list', [...projectCommands, ...pluginCommands])
       })
 
       socket.on('commands:get', (name: string) => {
@@ -311,9 +329,18 @@ export class ClaudeSession {
             disableModelInvocation: data.disableModelInvocation,
           })
           socket.emit('commands:saved', { success: true, command })
-          // Send updated list
-          const commands = this.commandsManager.getCommands()
-          socket.emit('commands:list', commands)
+          // Send updated list (project + plugin)
+          const projectCommands = this.commandsManager.getCommands().map(c => ({ ...c, source: 'project' }))
+          const pluginCommands = this.pluginsManager.getAllPluginCommands().map(c => ({
+            name: c.fullName,
+            path: `plugin:${c.pluginName}/${c.name}.md`,
+            description: c.description,
+            content: c.content,
+            rawContent: c.content,
+            updatedAt: new Date().toISOString(),
+            source: c.pluginName,
+          }))
+          socket.emit('commands:list', [...projectCommands, ...pluginCommands])
         }
         catch (error) {
           socket.emit('commands:saved', { success: false, error: String(error) })
@@ -324,16 +351,41 @@ export class ClaudeSession {
         log('Command delete requested', { name })
         const success = this.commandsManager.deleteCommand(name)
         socket.emit('commands:deleted', { name, success })
-        // Send updated list
-        const commands = this.commandsManager.getCommands()
-        socket.emit('commands:list', commands)
+        // Send updated list (project + plugin)
+        const projectCommands = this.commandsManager.getCommands().map(cmd => ({
+          ...cmd,
+          source: 'project',
+        }))
+        const pluginCommands = this.pluginsManager.getAllPluginCommands().map(cmd => ({
+          name: cmd.fullName,
+          path: `plugin:${cmd.pluginName}/${cmd.name}.md`,
+          description: cmd.description,
+          content: cmd.content,
+          rawContent: cmd.content,
+          updatedAt: new Date().toISOString(),
+          source: cmd.pluginName,
+        }))
+        socket.emit('commands:list', [...projectCommands, ...pluginCommands])
       })
 
       // Agents (Subagents) Management
       socket.on('agents:list', () => {
         log('Agents list requested')
-        const agents = this.agentsManager.getAgents()
-        socket.emit('agents:list', agents)
+        // Get project agents
+        const projectAgents = this.agentsManager.getAgents().map(agent => ({
+          ...agent,
+          source: 'project',
+        }))
+        // Get plugin agents
+        const pluginAgents = this.pluginsManager.getAllPluginAgents().map(agent => ({
+          name: agent.name,
+          description: agent.description,
+          prompt: agent.prompt,
+          rawContent: agent.prompt,
+          updatedAt: new Date().toISOString(),
+          source: agent.pluginName,
+        }))
+        socket.emit('agents:list', [...projectAgents, ...pluginAgents])
       })
 
       socket.on('agents:get', (name: string) => {
@@ -365,9 +417,17 @@ export class ClaudeSession {
             skills: data.skills,
           })
           socket.emit('agents:saved', { success: true, agent })
-          // Send updated list
-          const agents = this.agentsManager.getAgents()
-          socket.emit('agents:list', agents)
+          // Send updated list (project + plugin)
+          const projectAgents = this.agentsManager.getAgents().map(a => ({ ...a, source: 'project' }))
+          const pluginAgents = this.pluginsManager.getAllPluginAgents().map(a => ({
+            name: a.name,
+            description: a.description,
+            prompt: a.prompt,
+            rawContent: a.prompt,
+            updatedAt: new Date().toISOString(),
+            source: a.pluginName,
+          }))
+          socket.emit('agents:list', [...projectAgents, ...pluginAgents])
         }
         catch (error) {
           socket.emit('agents:saved', { success: false, error: String(error) })
@@ -378,16 +438,37 @@ export class ClaudeSession {
         log('Agent delete requested', { name })
         const success = this.agentsManager.deleteAgent(name)
         socket.emit('agents:deleted', { name, success })
-        // Send updated list
-        const agents = this.agentsManager.getAgents()
-        socket.emit('agents:list', agents)
+        // Send updated list (project + plugin)
+        const projectAgents = this.agentsManager.getAgents().map(a => ({ ...a, source: 'project' }))
+        const pluginAgents = this.pluginsManager.getAllPluginAgents().map(a => ({
+          name: a.name,
+          description: a.description,
+          prompt: a.prompt,
+          rawContent: a.prompt,
+          updatedAt: new Date().toISOString(),
+          source: a.pluginName,
+        }))
+        socket.emit('agents:list', [...projectAgents, ...pluginAgents])
       })
 
       // ===== SKILLS HANDLERS =====
       socket.on('skills:list', () => {
         log('Skills list requested')
-        const skills = this.skillsManager.getSkills()
-        socket.emit('skills:list', skills)
+        // Get project skills
+        const projectSkills = this.skillsManager.getSkills().map(skill => ({
+          ...skill,
+          source: 'project',
+        }))
+        // Get plugin skills
+        const pluginSkills = this.pluginsManager.getAllPluginSkills().map(skill => ({
+          name: skill.fullName,
+          description: skill.description,
+          content: skill.content,
+          rawContent: skill.content,
+          updatedAt: new Date().toISOString(),
+          source: skill.pluginName,
+        }))
+        socket.emit('skills:list', [...projectSkills, ...pluginSkills])
       })
 
       socket.on('skills:get', (name: string) => {
@@ -423,9 +504,17 @@ export class ClaudeSession {
             agent: data.agent,
           })
           socket.emit('skills:saved', { success: true, skill })
-          // Send updated list
-          const skills = this.skillsManager.getSkills()
-          socket.emit('skills:list', skills)
+          // Send updated list (project + plugin)
+          const projectSkills = this.skillsManager.getSkills().map(s => ({ ...s, source: 'project' }))
+          const pluginSkills = this.pluginsManager.getAllPluginSkills().map(s => ({
+            name: s.fullName,
+            description: s.description,
+            content: s.content,
+            rawContent: s.content,
+            updatedAt: new Date().toISOString(),
+            source: s.pluginName,
+          }))
+          socket.emit('skills:list', [...projectSkills, ...pluginSkills])
         }
         catch (error) {
           socket.emit('skills:saved', { success: false, error: getErrorMessage(error) })
@@ -435,17 +524,54 @@ export class ClaudeSession {
       // Get skill names only (for agent skills selector)
       socket.on('skills:names', () => {
         log('Skill names requested')
-        const names = this.skillsManager.getSkillNames()
-        socket.emit('skills:names', names)
+        const projectNames = this.skillsManager.getSkillNames()
+        const pluginNames = this.pluginsManager.getAllPluginSkills().map(s => s.fullName)
+        socket.emit('skills:names', [...projectNames, ...pluginNames].sort())
       })
 
       socket.on('skills:delete', (name: string) => {
         log('Skill delete requested', { name })
         const success = this.skillsManager.deleteSkill(name)
         socket.emit('skills:deleted', { name, success })
-        // Send updated list
-        const skills = this.skillsManager.getSkills()
-        socket.emit('skills:list', skills)
+        // Send updated list (project + plugin)
+        const projectSkills = this.skillsManager.getSkills().map(s => ({ ...s, source: 'project' }))
+        const pluginSkills = this.pluginsManager.getAllPluginSkills().map(s => ({
+          name: s.fullName,
+          description: s.description,
+          content: s.content,
+          rawContent: s.content,
+          updatedAt: new Date().toISOString(),
+          source: s.pluginName,
+        }))
+        socket.emit('skills:list', [...projectSkills, ...pluginSkills])
+      })
+
+      // ===== PLUGINS HANDLERS =====
+      socket.on('plugins:list', () => {
+        log('Plugins list requested')
+        const plugins = this.pluginsManager.getInstalledPlugins()
+        socket.emit('plugins:list', plugins)
+      })
+
+      socket.on('plugins:get', (pluginId: string) => {
+        log('Plugin details requested', { pluginId })
+        const plugins = this.pluginsManager.getInstalledPlugins()
+        const plugin = plugins.find(p => p.id === pluginId)
+        if (plugin && plugin.cachePath) {
+          const skills = this.pluginsManager.getPluginSkills(plugin.cachePath, plugin.name)
+          const commands = this.pluginsManager.getPluginCommands(plugin.cachePath, plugin.name)
+          const agents = this.pluginsManager.getPluginAgents(plugin.cachePath, plugin.name)
+          socket.emit('plugins:get', { plugin, skills, commands, agents })
+        }
+        else {
+          socket.emit('plugins:get', { plugin, skills: [], commands: [], agents: [] })
+        }
+      })
+
+      socket.on('marketplaces:list', () => {
+        log('Marketplaces list requested')
+        const marketplaces = this.pluginsManager.getMarketplaces()
+        socket.emit('marketplaces:list', marketplaces)
       })
 
       // ===== SETTINGS HANDLERS =====
