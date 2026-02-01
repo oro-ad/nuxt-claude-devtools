@@ -99,7 +99,7 @@ defineEmits<{
       </div>
 
       <!-- Editor Panel -->
-      <div class="flex-1 flex flex-col n-bg-active rounded-lg overflow-hidden">
+      <div class="flex-1 flex flex-col n-bg-active rounded-lg overflow-hidden overflow-y-auto">
         <slot name="editor">
           <!-- Empty State -->
           <div class="flex-1 flex items-center justify-center opacity-50">

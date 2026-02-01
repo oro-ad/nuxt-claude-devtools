@@ -38,6 +38,7 @@ const {
   newForm: newAgent,
   editForm: editAgent,
   load: loadAgents,
+  select,
   startEditing,
   save: saveAgent,
   cancelEditing,
@@ -111,7 +112,7 @@ const selectedAgent = computed(() => {
 })
 
 function selectAgent(agent: Agent) {
-  showNewForm.value = false
+  select(agent)
   router.push(`/agents/${agent.name}`)
 }
 

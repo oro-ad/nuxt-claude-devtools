@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import type { ComputedRef, Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
 import type { ContentBlock, Conversation, DocFile, Message, SlashCommand } from '../types'
@@ -14,7 +15,32 @@ interface UseChatOptions {
   getCurrentUserId?: () => string | null
 }
 
-export function useClaudeChat(options: UseChatOptions = {}) {
+/** Return type for useClaudeChat composable */
+export interface UseChatReturn {
+  // State
+  socket: Ref<Socket | null>
+  messages: Ref<Message[]>
+  conversations: Ref<Conversation[]>
+  activeConversationId: Ref<string | null>
+  isConnected: Ref<boolean>
+  isSessionActive: Ref<boolean>
+  isProcessing: Ref<boolean>
+  isHistoryOpen: Ref<boolean>
+  statusText: ComputedRef<string>
+  statusColor: ComputedRef<string>
+
+  // Methods
+  connectSocket: () => void
+  disconnect: () => void
+  newChat: () => void
+  sendMessage: (content: string, senderId?: string, senderNickname?: string) => void
+  addMessage: (role: Message['role'], content: string, streaming?: boolean) => Message
+  toggleHistory: () => void
+  selectConversation: (id: string) => void
+  findToolResult: (blocks: ContentBlock[] | undefined, toolUseId: string) => ContentBlock | undefined
+}
+
+export function useClaudeChat(options: UseChatOptions = {}): UseChatReturn {
   const { log = () => {}, onDocsReceived, onCommandsReceived, socketUrl, getCurrentUserId } = options
 
   const socket = ref<Socket | null>(null)

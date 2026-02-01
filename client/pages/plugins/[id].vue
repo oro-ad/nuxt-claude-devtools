@@ -35,7 +35,10 @@ const _props = defineProps<{
 </script>
 
 <template>
-  <div v-if="plugin">
+  <div
+    v-if="plugin"
+    class="overflow-y-auto"
+  >
     <!-- Header -->
     <div class="p-4 border-b border-neutral-200 dark:border-neutral-800">
       <div class="flex items-center gap-3">

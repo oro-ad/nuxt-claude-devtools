@@ -35,6 +35,7 @@ const {
   newForm: newSkill,
   editForm: editSkill,
   load: loadSkills,
+  select,
   startEditing,
   save: saveSkill,
   cancelEditing,
@@ -86,7 +87,7 @@ const selectedSkill = computed(() => {
 
 // Select skill by navigating
 function selectSkill(skill: Skill) {
-  showNewForm.value = false
+  select(skill)
   router.push(`/skills/${skill.name}`)
 }
 

@@ -35,6 +35,7 @@ const {
   newForm: newCommand,
   editForm: editCommand,
   load: loadCommands,
+  select,
   startEditing,
   save: saveCommand,
   cancelEditing,
@@ -88,7 +89,7 @@ const selectedCommand = computed(() => {
 })
 
 function selectCommand(command: SlashCommand) {
-  showNewForm.value = false
+  select(command)
   router.push(`/commands/${command.name}`)
 }
 
