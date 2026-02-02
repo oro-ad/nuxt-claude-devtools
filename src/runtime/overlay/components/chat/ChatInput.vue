@@ -97,7 +97,10 @@ defineExpose({
         @click="selectCommand(cmd)"
       >
         <span class="claude-autocomplete-name">/{{ cmd.name }}</span>
-        <span v-if="cmd.description" class="claude-autocomplete-desc">{{ cmd.description }}</span>
+        <span
+          v-if="cmd.description"
+          class="claude-autocomplete-desc"
+        >{{ cmd.description }}</span>
       </button>
     </div>
 
@@ -121,7 +124,12 @@ defineExpose({
           title="Voice input"
           @click="emit('voiceInput')"
         >
-          <svg fill="currentColor" height="20" viewBox="0 0 24 24" width="20">
+          <svg
+            fill="currentColor"
+            height="20"
+            viewBox="0 0 24 24"
+            width="20"
+          >
             <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
           </svg>
         </button>
@@ -131,11 +139,35 @@ defineExpose({
           class="claude-send-btn"
           @click="handleSubmit"
         >
-          <svg v-if="isProcessing" class="claude-spinner" fill="none" height="20" stroke="currentColor" viewBox="0 0 24 24" width="20">
-            <circle cx="12" cy="12" opacity="0.25" r="10" stroke-width="2" />
-            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round" stroke-width="2" />
+          <svg
+            v-if="isProcessing"
+            class="claude-spinner"
+            fill="none"
+            height="20"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            width="20"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              opacity="0.25"
+              r="10"
+              stroke-width="2"
+            />
+            <path
+              d="M12 2a10 10 0 0 1 10 10"
+              stroke-linecap="round"
+              stroke-width="2"
+            />
           </svg>
-          <svg v-else fill="currentColor" height="20" viewBox="0 0 24 24" width="20">
+          <svg
+            v-else
+            fill="currentColor"
+            height="20"
+            viewBox="0 0 24 24"
+            width="20"
+          >
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
           </svg>
         </button>

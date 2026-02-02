@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useClaudeChat } from '../../shared/composables/useClaudeChat'
 import { useVoiceInput } from '../../shared/composables/useVoiceInput'
 import { useShare } from '../../shared/composables/useShare'
 import type { SlashCommand } from '../../shared/types'
+import { useMobileSwipe, usePanelInteraction, usePanelPosition } from '../composables'
 import { ChatHeader, ChatInput, ChatMessages, ClaudeBadge, HistoryPanel, NicknameModal } from './chat'
 
 const props = defineProps<{
@@ -16,516 +17,75 @@ const props = defineProps<{
 
 const isOpen = ref(false)
 const isMobile = ref(false)
-const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
-const chatMessagesRef = ref<InstanceType<typeof ChatMessages> | null>(null)
-
-// ============================================================================
-// PANEL POSITION & SIZE
-// ============================================================================
-
-const PANEL_STORAGE_KEY = 'claude-overlay-panel-state'
 const panelRef = ref<HTMLElement | null>(null)
 const headerRef = ref<HTMLElement | null>(null)
-
-// Badge position stored as distance from right/bottom edges
-const badgePos = ref({ x: 24, y: 24 })
-
-// Panel dimensions
-const panelSize = ref({ width: 440, height: 600 })
-
-// Panel screen position (left, top) - used only when panel is open
-const panelScreenPos = ref({ left: 0, top: 0 })
-
-// Anchor direction: determines which corner of panel touches badge
-// 'br' = bottom-right corner at badge (panel opens left & up)
-// 'bl' = bottom-left corner at badge (panel opens right & up)
-// 'tr' = top-right corner at badge (panel opens left & down)
-// 'tl' = top-left corner at badge (panel opens right & down)
-const panelAnchor = ref<'br' | 'bl' | 'tr' | 'tl'>('br')
-
-const isPanelDragging = ref(false)
-const isPanelResizing = ref(false)
-const activeResizeEdge = ref<string | null>(null)
-const panelDragStart = ref({ x: 0, y: 0, panelX: 0, panelY: 0 })
-const panelResizeStart = ref({ x: 0, y: 0, width: 0, height: 0, panelX: 0, panelY: 0 })
-
-// Hovered edge for resize indicators
-const hoveredEdge = ref<string | null>(null)
-const EDGE_THRESHOLD = 12
+const chatInputRef = ref<InstanceType<typeof ChatInput> | null>(null)
+const chatMessagesRef = ref<InstanceType<typeof ChatMessages> | null>(null)
 
 function checkMobile() {
   isMobile.value = window.innerWidth <= 640
 }
 
-function loadPanelState() {
-  try {
-    const saved = localStorage.getItem(PANEL_STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      // Replace whole objects to trigger reactivity
-      if (parsed.x !== undefined && parsed.y !== undefined) {
-        badgePos.value = { x: parsed.x, y: parsed.y }
-      }
-      if (parsed.width !== undefined && parsed.height !== undefined) {
-        panelSize.value = { width: parsed.width, height: parsed.height }
-      }
-      if (parsed.anchor) {
-        panelAnchor.value = parsed.anchor
-      }
-    }
-  }
-  catch { /* ignore */
-  }
-}
+// ============================================================================
+// PANEL POSITIONING
+// ============================================================================
 
-function savePanelState() {
-  try {
-    localStorage.setItem(PANEL_STORAGE_KEY, JSON.stringify({
-      x: badgePos.value.x,
-      y: badgePos.value.y,
-      width: panelSize.value.width,
-      height: panelSize.value.height,
-      anchor: panelAnchor.value,
-    }))
-  }
-  catch { /* ignore */
-  }
-}
+const {
+  badgePos,
+  panelSize,
+  panelScreenPos,
+  load: loadPanelState,
+  openPanel,
+  closePanel,
+  onBadgeDragEnd,
+  getPanelStyle,
+} = usePanelPosition()
 
-// Open panel using saved anchor direction, constrain size if needed
-function openPanel() {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const padding = 20
-  const minWidth = 320
-  const minHeight = 400
-  const badgeWidth = 100
-  const badgeHeight = 40
+// ============================================================================
+// PANEL INTERACTIONS (drag/resize)
+// ============================================================================
 
-  // Badge corner positions (badge uses right/bottom CSS positioning)
-  const badgeRight = vw - badgePos.value.x
-  const badgeLeft = badgeRight - badgeWidth
-  const badgeBottom = vh - badgePos.value.y
-  const badgeTop = badgeBottom - badgeHeight
-
-  // Use saved anchor direction (don't recalculate)
-  const anchor = panelAnchor.value
-
-  // Calculate available space and constrain panel size
-  let maxWidth: number
-  let maxHeight: number
-
-  if (anchor === 'br' || anchor === 'tr') {
-    // Panel opens to the left
-    maxWidth = badgeRight - padding
-  }
-  else {
-    // Panel opens to the right
-    maxWidth = vw - badgeLeft - padding
-  }
-
-  if (anchor === 'br' || anchor === 'bl') {
-    // Panel opens upward
-    maxHeight = badgeBottom - padding
-  }
-  else {
-    // Panel opens downward
-    maxHeight = vh - badgeTop - padding
-  }
-
-  // Constrain size
-  panelSize.value.width = Math.max(minWidth, Math.min(panelSize.value.width, maxWidth))
-  panelSize.value.height = Math.max(minHeight, Math.min(panelSize.value.height, maxHeight))
-
-  // Calculate panel screen position (left, top)
-  // The anchor corner of the panel should touch the corresponding badge corner
-  if (anchor === 'br') {
-    // Panel's bottom-right at badge's bottom-right
-    panelScreenPos.value.left = badgeRight - panelSize.value.width
-    panelScreenPos.value.top = badgeBottom - panelSize.value.height
-  }
-  else if (anchor === 'bl') {
-    // Panel's bottom-left at badge's bottom-left
-    panelScreenPos.value.left = badgeLeft
-    panelScreenPos.value.top = badgeBottom - panelSize.value.height
-  }
-  else if (anchor === 'tr') {
-    // Panel's top-right at badge's top-right
-    panelScreenPos.value.left = badgeRight - panelSize.value.width
-    panelScreenPos.value.top = badgeTop
-  }
-  else {
-    // tl: Panel's top-left at badge's top-left
-    panelScreenPos.value.left = badgeLeft
-    panelScreenPos.value.top = badgeTop
-  }
-}
-
-// Save panel position on close - anchor corner becomes new badge position
-function closePanel() {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const anchor = panelAnchor.value
-  const badgeWidth = 100
-
-  // Get the anchor corner's screen position
-  // This is where the badge's corresponding corner should be
-  let badgeRightEdge: number
-  let badgeBottomEdge: number
-
-  if (anchor === 'br') {
-    // Panel's bottom-right corner - badge right edge here
-    badgeRightEdge = panelScreenPos.value.left + panelSize.value.width
-    badgeBottomEdge = panelScreenPos.value.top + panelSize.value.height
-  }
-  else if (anchor === 'bl') {
-    // Panel's bottom-left corner - badge left edge here, so right edge is + badgeWidth
-    badgeRightEdge = panelScreenPos.value.left + badgeWidth
-    badgeBottomEdge = panelScreenPos.value.top + panelSize.value.height
-  }
-  else if (anchor === 'tr') {
-    // Panel's top-right corner
-    badgeRightEdge = panelScreenPos.value.left + panelSize.value.width
-    badgeBottomEdge = panelScreenPos.value.top + 40 // badgeHeight
-  }
-  else {
-    // tl: Panel's top-left corner
-    badgeRightEdge = panelScreenPos.value.left + badgeWidth
-    badgeBottomEdge = panelScreenPos.value.top + 40 // badgeHeight
-  }
-
-  // Convert to right/bottom distance for badge CSS positioning
-  badgePos.value.x = vw - badgeRightEdge
-  badgePos.value.y = vh - badgeBottomEdge
-
-  savePanelState()
-}
-
-function getPanelStyle() {
-  if (isMobile.value) return {}
-
-  return {
-    left: `${panelScreenPos.value.left}px`,
-    top: `${panelScreenPos.value.top}px`,
-    width: `${panelSize.value.width}px`,
-    height: `${panelSize.value.height}px`,
-    transformOrigin: getTransformOrigin(),
-  }
-}
-
-function getTransformOrigin() {
-  const anchor = panelAnchor.value
-  if (anchor === 'br') return 'bottom right'
-  if (anchor === 'bl') return 'bottom left'
-  if (anchor === 'tr') return 'top right'
-  return 'top left'
-}
-
-// Panel dragging - simple screen coordinates
-function handlePanelDragStart(e: MouseEvent) {
-  if (isMobile.value) return
-  e.preventDefault()
-
-  panelDragStart.value = {
-    x: e.clientX,
-    y: e.clientY,
-    panelX: panelScreenPos.value.left,
-    panelY: panelScreenPos.value.top,
-  }
-  isPanelDragging.value = true
-
-  window.addEventListener('mousemove', handlePanelDragMove)
-  window.addEventListener('mouseup', handlePanelDragEnd)
-}
-
-function handlePanelDragMove(e: MouseEvent) {
-  if (!isPanelDragging.value) return
-
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const padding = 20
-
-  const deltaX = e.clientX - panelDragStart.value.x
-  const deltaY = e.clientY - panelDragStart.value.y
-
-  let newLeft = panelDragStart.value.panelX + deltaX
-  let newTop = panelDragStart.value.panelY + deltaY
-
-  // Constrain to viewport
-  newLeft = Math.max(padding, Math.min(vw - panelSize.value.width - padding, newLeft))
-  newTop = Math.max(padding, Math.min(vh - panelSize.value.height - padding, newTop))
-
-  panelScreenPos.value.left = newLeft
-  panelScreenPos.value.top = newTop
-}
-
-function handlePanelDragEnd() {
-  isPanelDragging.value = false
-  window.removeEventListener('mousemove', handlePanelDragMove)
-  window.removeEventListener('mouseup', handlePanelDragEnd)
-}
-
-// Panel resizing - simple, edges move naturally
-function handlePanelResizeStart(edge: string, e: MouseEvent) {
-  if (isMobile.value) return
-  e.preventDefault()
-  e.stopPropagation()
-
-  activeResizeEdge.value = edge
-  panelResizeStart.value = {
-    x: e.clientX,
-    y: e.clientY,
-    width: panelSize.value.width,
-    height: panelSize.value.height,
-    panelX: panelScreenPos.value.left,
-    panelY: panelScreenPos.value.top,
-  }
-  isPanelResizing.value = true
-
-  window.addEventListener('mousemove', handlePanelResizeMove)
-  window.addEventListener('mouseup', handlePanelResizeEnd)
-}
-
-function handlePanelResizeMove(e: MouseEvent) {
-  if (!isPanelResizing.value || !activeResizeEdge.value) return
-
-  const edge = activeResizeEdge.value
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const minWidth = 320
-  const minHeight = 400
-  const padding = 20
-
-  const deltaX = e.clientX - panelResizeStart.value.x
-  const deltaY = e.clientY - panelResizeStart.value.y
-
-  let newWidth = panelResizeStart.value.width
-  let newHeight = panelResizeStart.value.height
-  let newLeft = panelResizeStart.value.panelX
-  let newTop = panelResizeStart.value.panelY
-
-  // West edge: move left side, change width
-  if (edge.includes('w')) {
-    newLeft = panelResizeStart.value.panelX + deltaX
-    newWidth = panelResizeStart.value.width - deltaX
-  }
-
-  // East edge: change width only
-  if (edge.includes('e')) {
-    newWidth = panelResizeStart.value.width + deltaX
-  }
-
-  // North edge: move top side, change height
-  if (edge.includes('n')) {
-    newTop = panelResizeStart.value.panelY + deltaY
-    newHeight = panelResizeStart.value.height - deltaY
-  }
-
-  // South edge: change height only
-  if (edge.includes('s')) {
-    newHeight = panelResizeStart.value.height + deltaY
-  }
-
-  // Apply minimum size constraints
-  if (newWidth < minWidth) {
-    if (edge.includes('w')) {
-      newLeft = panelResizeStart.value.panelX + panelResizeStart.value.width - minWidth
-    }
-    newWidth = minWidth
-  }
-  if (newHeight < minHeight) {
-    if (edge.includes('n')) {
-      newTop = panelResizeStart.value.panelY + panelResizeStart.value.height - minHeight
-    }
-    newHeight = minHeight
-  }
-
-  // Apply viewport constraints
-  newLeft = Math.max(padding, newLeft)
-  newTop = Math.max(padding, newTop)
-  if (newLeft + newWidth > vw - padding) {
-    newWidth = vw - padding - newLeft
-  }
-  if (newTop + newHeight > vh - padding) {
-    newHeight = vh - padding - newTop
-  }
-
-  panelScreenPos.value.left = newLeft
-  panelScreenPos.value.top = newTop
-  panelSize.value.width = newWidth
-  panelSize.value.height = newHeight
-}
-
-function handlePanelResizeEnd() {
-  isPanelResizing.value = false
-  activeResizeEdge.value = null
-  window.removeEventListener('mousemove', handlePanelResizeMove)
-  window.removeEventListener('mouseup', handlePanelResizeEnd)
-}
-
-// Edge hover detection
-function handlePanelMouseMove(e: MouseEvent) {
-  if (isMobile.value || isPanelResizing.value || isPanelDragging.value) return
-  if (!panelRef.value) return
-
-  const rect = panelRef.value.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const y = e.clientY - rect.top
-  const w = rect.width
-  const h = rect.height
-
-  const nearLeft = x < EDGE_THRESHOLD
-  const nearRight = x > w - EDGE_THRESHOLD
-  const nearTop = y < EDGE_THRESHOLD
-  const nearBottom = y > h - EDGE_THRESHOLD
-
-  if (nearTop && nearLeft) hoveredEdge.value = 'nw'
-  else if (nearTop && nearRight) hoveredEdge.value = 'ne'
-  else if (nearBottom && nearLeft) hoveredEdge.value = 'sw'
-  else if (nearBottom && nearRight) hoveredEdge.value = 'se'
-  else if (nearTop) hoveredEdge.value = 'n'
-  else if (nearBottom) hoveredEdge.value = 's'
-  else if (nearLeft) hoveredEdge.value = 'w'
-  else if (nearRight) hoveredEdge.value = 'e'
-  else hoveredEdge.value = null
-}
-
-function handlePanelMouseLeave() {
-  if (!isPanelResizing.value) {
-    hoveredEdge.value = null
-  }
-}
-
-const resizeCursor = computed(() => {
-  const edge = hoveredEdge.value || activeResizeEdge.value
-  if (!edge) return 'default'
-  const cursors: Record<string, string> = {
-    n: 'ns-resize', s: 'ns-resize',
-    e: 'ew-resize', w: 'ew-resize',
-    ne: 'nesw-resize', sw: 'nesw-resize',
-    nw: 'nwse-resize', se: 'nwse-resize',
-  }
-  return cursors[edge] || 'default'
+const {
+  isDragging: isPanelDragging,
+  isResizing: isPanelResizing,
+  activeEdge: activeResizeEdge,
+  hoveredEdge,
+  cursor: resizeCursor,
+  startDrag: handlePanelDragStart,
+  startResize: handlePanelResizeStart,
+  onMouseMove: handlePanelMouseMove,
+  onMouseLeave: handlePanelMouseLeave,
+} = usePanelInteraction({
+  panelScreenPos,
+  panelSize,
+  panelRef,
+  isMobile,
 })
 
 // ============================================================================
-// BADGE POSITION (synced with panel)
+// MOBILE SWIPE
 // ============================================================================
 
-function handleBadgeDragEnd(position: { x: number, y: number }) {
-  badgePos.value.x = position.x
-  badgePos.value.y = position.y
-
-  // Recalculate best anchor direction based on new badge position
-  const vw = window.innerWidth
-  const vh = window.innerHeight
-  const badgeWidth = 100
-  const badgeHeight = 40
-
-  const badgeRight = vw - position.x
-  const badgeLeft = badgeRight - badgeWidth
-  const badgeBottom = vh - position.y
-  const badgeTop = badgeBottom - badgeHeight
-
-  const badgeCenterX = badgeLeft + badgeWidth / 2
-  const badgeCenterY = badgeTop + badgeHeight / 2
-
-  const moreSpaceOnLeft = badgeCenterX > vw / 2
-  const moreSpaceAbove = badgeCenterY > vh / 2
-
-  if (moreSpaceOnLeft && moreSpaceAbove) {
-    panelAnchor.value = 'br'
-  }
-  else if (!moreSpaceOnLeft && moreSpaceAbove) {
-    panelAnchor.value = 'bl'
-  }
-  else if (moreSpaceOnLeft && !moreSpaceAbove) {
-    panelAnchor.value = 'tr'
-  }
-  else {
-    panelAnchor.value = 'tl'
-  }
-
-  savePanelState()
+function lockBodyScroll(lock: boolean) {
+  if (typeof document === 'undefined') return
+  document.body.style.overflow = lock ? 'hidden' : ''
+  document.body.style.touchAction = lock ? 'none' : ''
 }
 
-// ============================================================================
-// MOBILE SWIPE TO CLOSE
-// ============================================================================
-
-const swipeStartY = ref(0)
-const swipeDeltaY = ref(0)
-const isSwiping = ref(false)
-const isSwipeClosing = ref(false)
-const SWIPE_THRESHOLD = 100
-
-function handleSwipeStart(e: TouchEvent | MouseEvent) {
-  if (window.innerWidth > 640) return
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-  swipeStartY.value = clientY
-  swipeDeltaY.value = 0
-  isSwiping.value = true
-
-  if (!('touches' in e)) {
-    window.addEventListener('mousemove', handleSwipeMove)
-    window.addEventListener('mouseup', handleSwipeEnd)
-  }
-}
-
-function handleSwipeMove(e: TouchEvent | MouseEvent) {
-  if (!isSwiping.value || window.innerWidth > 640) return
-
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-  const delta = clientY - swipeStartY.value
-
-  if (delta > 0) {
-    e.preventDefault()
-    swipeDeltaY.value = delta
-    if (panelRef.value) {
-      panelRef.value.style.transform = `translateY(${delta}px)`
-      panelRef.value.style.transition = 'none'
-    }
-  }
-}
-
-function handleSwipeEnd() {
-  if (!isSwiping.value || window.innerWidth > 640) return
-
-  window.removeEventListener('mousemove', handleSwipeMove)
-  window.removeEventListener('mouseup', handleSwipeEnd)
-
-  isSwiping.value = false
-
-  if (panelRef.value) {
-    panelRef.value.style.transition = 'transform 0.3s ease-out'
-
-    if (swipeDeltaY.value > SWIPE_THRESHOLD) {
-      isSwipeClosing.value = true
-      panelRef.value.style.transform = 'translateY(100%)'
-      setTimeout(() => {
-        isOpen.value = false
-        lockBodyScroll(false)
-        nextTick(() => {
-          isSwipeClosing.value = false
-          if (panelRef.value) {
-            panelRef.value.style.transform = ''
-            panelRef.value.style.transition = ''
-          }
-        })
-      }, 300)
-    }
-    else {
-      panelRef.value.style.transform = 'translateY(0)'
-      setTimeout(() => {
-        if (panelRef.value) {
-          panelRef.value.style.transition = ''
-        }
-      }, 300)
-    }
-  }
-
-  swipeDeltaY.value = 0
-}
+const {
+  isSwipeClosing,
+  handleTouchStart,
+  handleTouchEnd,
+  setupTouchMoveListener,
+  cleanupTouchMoveListener,
+} = useMobileSwipe({
+  panelRef,
+  headerRef,
+  onSwipeClose: () => {
+    isOpen.value = false
+    lockBodyScroll(false)
+  },
+})
 
 // ============================================================================
 // CHAT LOGIC
@@ -534,7 +94,6 @@ function handleSwipeEnd() {
 const commands = ref<SlashCommand[]>([])
 const showHistory = ref(false)
 
-// Sharing
 const {
   userId,
   nickname,
@@ -583,7 +142,6 @@ const {
   },
 })
 
-// Voice input
 const {
   isRecording,
   isSpeechSupported,
@@ -595,48 +153,48 @@ const {
 const showShareCopied = ref(false)
 const pendingNicknameAction = ref<'share' | 'message' | null>(null)
 
-// Context chips
-const contextEnabled = ref({
-  viewport: true,
-  userAgent: true,
-  routing: true,
-})
-
+// Context collection
 function collectContext(): string | null {
-  const parts: string[] = []
+  const parts: string[] = [
+    `viewport: ${window.innerWidth}x${window.innerHeight}`,
+    `route: ${window.location.pathname}`,
+  ]
 
-  if (contextEnabled.value.viewport) {
-    parts.push(`viewport: ${window.innerWidth}x${window.innerHeight}`)
+  const ua = navigator.userAgent
+  const browser = ua.includes('Firefox/')
+    ? 'Firefox'
+    : ua.includes('Edg/')
+      ? 'Edge'
+      : ua.includes('Chrome/')
+        ? 'Chrome'
+        : ua.includes('Safari/') && !ua.includes('Chrome')
+          ? 'Safari'
+          : 'Unknown'
+
+  const os = ua.includes('Windows')
+    ? 'Windows'
+    : ua.includes('Mac OS')
+      ? 'macOS'
+      : ua.includes('Linux')
+        ? 'Linux'
+        : ua.includes('Android')
+          ? 'Android'
+          : (ua.includes('iPhone') || ua.includes('iPad'))
+              ? 'iOS'
+              : 'Unknown'
+
+  parts.push(`browser: ${browser} on ${os}`)
+
+  if (window.location.search) {
+    parts.push(`query: ${window.location.search}`)
   }
 
-  if (contextEnabled.value.userAgent) {
-    const ua = navigator.userAgent
-    let browser = 'Unknown'
-    if (ua.includes('Firefox/')) browser = 'Firefox'
-    else if (ua.includes('Edg/')) browser = 'Edge'
-    else if (ua.includes('Chrome/')) browser = 'Chrome'
-    else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari'
-
-    let os = 'Unknown'
-    if (ua.includes('Windows')) os = 'Windows'
-    else if (ua.includes('Mac OS')) os = 'macOS'
-    else if (ua.includes('Linux')) os = 'Linux'
-    else if (ua.includes('Android')) os = 'Android'
-    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
-
-    parts.push(`browser: ${browser} on ${os}`)
-  }
-
-  if (contextEnabled.value.routing) {
-    parts.push(`route: ${window.location.pathname}`)
-    if (window.location.search) {
-      parts.push(`query: ${window.location.search}`)
-    }
-  }
-
-  if (parts.length === 0) return null
   return `[context]\n${parts.join('\n')}\n[/context]\n`
 }
+
+// ============================================================================
+// EVENT HANDLERS
+// ============================================================================
 
 function handleMessageSubmit(message: string) {
   if (needsNicknameForMessage()) {
@@ -646,8 +204,11 @@ function handleMessageSubmit(message: string) {
   }
 
   const context = collectContext()
-  const messageWithContext = context ? context + message : message
-  sendChatMessage(messageWithContext, isShareMode.value ? userId.value || undefined : undefined, nickname.value || undefined)
+  sendChatMessage(
+    context + message,
+    isShareMode.value ? userId.value || undefined : undefined,
+    nickname.value || undefined,
+  )
 }
 
 function handleShareClick() {
@@ -661,8 +222,7 @@ function handleShareClick() {
 }
 
 async function doShareCopy() {
-  const success = await copyShareLink()
-  if (success) {
+  if (await copyShareLink()) {
     showShareCopied.value = true
     setTimeout(() => {
       showShareCopied.value = false
@@ -677,9 +237,6 @@ function handleNicknameSubmit(name: string) {
 
   if (pendingNicknameAction.value === 'share') {
     doShareCopy()
-  }
-  else if (pendingNicknameAction.value === 'message') {
-    // Will need to re-trigger submit - for now just close modal
   }
   pendingNicknameAction.value = null
 }
@@ -706,20 +263,8 @@ function handleVoiceInput() {
 }
 
 // ============================================================================
-// UI HELPERS
+// OVERLAY CONTROL
 // ============================================================================
-
-function lockBodyScroll(lock: boolean) {
-  if (typeof document === 'undefined') return
-  if (lock) {
-    document.body.style.overflow = 'hidden'
-    document.body.style.touchAction = 'none'
-  }
-  else {
-    document.body.style.overflow = ''
-    document.body.style.touchAction = ''
-  }
-}
 
 function handleClose() {
   closePanel()
@@ -729,7 +274,6 @@ function handleClose() {
 
 function toggleOverlay() {
   if (!isOpen.value) {
-    // Opening
     if (window.innerWidth <= 640) lockBodyScroll(true)
     openPanel()
     isOpen.value = true
@@ -768,8 +312,8 @@ function handleGlobalKeydown(e: KeyboardEvent) {
 watch(isOpen, (open) => {
   if (!open) lockBodyScroll(false)
   nextTick(() => {
-    if (open && headerRef.value) {
-      headerRef.value.addEventListener('touchmove', handleSwipeMove as EventListener, { passive: false })
+    if (open) {
+      setupTouchMoveListener()
     }
   })
 })
@@ -804,9 +348,7 @@ onUnmounted(() => {
   lockBodyScroll(false)
   window.removeEventListener('keydown', handleGlobalKeydown)
   window.removeEventListener('resize', checkMobile)
-  if (headerRef.value) {
-    headerRef.value.removeEventListener('touchmove', handleSwipeMove as EventListener)
-  }
+  cleanupTouchMoveListener()
 })
 </script>
 
@@ -818,7 +360,7 @@ onUnmounted(() => {
       :position="badgePos"
       :status-color="statusColor"
       @click="toggleOverlay"
-      @drag-end="handleBadgeDragEnd"
+      @drag-end="onBadgeDragEnd"
     />
 
     <!-- Backdrop -->
@@ -844,7 +386,7 @@ onUnmounted(() => {
         v-if="isOpen"
         ref="panelRef"
         :class="['claude-panel', { 'claude-panel-dragging': isPanelDragging, 'claude-panel-resizing': isPanelResizing }]"
-        :style="[getPanelStyle(), { cursor: resizeCursor }]"
+        :style="[isMobile ? {} : getPanelStyle(), { cursor: resizeCursor }]"
         @keydown="handleKeydown"
         @mouseleave="handlePanelMouseLeave"
         @mousemove="handlePanelMouseMove"
@@ -852,36 +394,16 @@ onUnmounted(() => {
         <!-- Resize edges -->
         <template v-if="!isMobile">
           <div
-            class="claude-resize-edge claude-resize-n"
-            @mousedown="(e) => handlePanelResizeStart('n', e)"
+            v-for="edge in ['n', 's', 'e', 'w']"
+            :key="edge"
+            :class="`claude-resize-edge claude-resize-${edge}`"
+            @mousedown="(e) => handlePanelResizeStart(edge, e)"
           />
           <div
-            class="claude-resize-edge claude-resize-s"
-            @mousedown="(e) => handlePanelResizeStart('s', e)"
-          />
-          <div
-            class="claude-resize-edge claude-resize-e"
-            @mousedown="(e) => handlePanelResizeStart('e', e)"
-          />
-          <div
-            class="claude-resize-edge claude-resize-w"
-            @mousedown="(e) => handlePanelResizeStart('w', e)"
-          />
-          <div
-            :class="['claude-resize-corner', 'claude-resize-nw', { 'claude-resize-active': hoveredEdge === 'nw' || activeResizeEdge === 'nw' }]"
-            @mousedown="(e) => handlePanelResizeStart('nw', e)"
-          />
-          <div
-            :class="['claude-resize-corner', 'claude-resize-ne', { 'claude-resize-active': hoveredEdge === 'ne' || activeResizeEdge === 'ne' }]"
-            @mousedown="(e) => handlePanelResizeStart('ne', e)"
-          />
-          <div
-            :class="['claude-resize-corner', 'claude-resize-sw', { 'claude-resize-active': hoveredEdge === 'sw' || activeResizeEdge === 'sw' }]"
-            @mousedown="(e) => handlePanelResizeStart('sw', e)"
-          />
-          <div
-            :class="['claude-resize-corner', 'claude-resize-se', { 'claude-resize-active': hoveredEdge === 'se' || activeResizeEdge === 'se' }]"
-            @mousedown="(e) => handlePanelResizeStart('se', e)"
+            v-for="corner in ['nw', 'ne', 'sw', 'se']"
+            :key="corner"
+            :class="['claude-resize-corner', `claude-resize-${corner}`, { 'claude-resize-active': hoveredEdge === corner || activeResizeEdge === corner }]"
+            @mousedown="(e) => handlePanelResizeStart(corner, e)"
           />
         </template>
 
@@ -890,9 +412,8 @@ onUnmounted(() => {
           v-if="isMobile"
           ref="headerRef"
           class="claude-drag-bumper"
-          @mousedown="handleSwipeStart"
-          @touchend="handleSwipeEnd"
-          @touchstart="handleSwipeStart"
+          @touchend="handleTouchEnd"
+          @touchstart="handleTouchStart"
         >
           <div class="claude-drag-handle-bar" />
         </div>
@@ -1003,9 +524,7 @@ onUnmounted(() => {
   -webkit-backdrop-filter: blur(var(--claude-blur-heavy));
   border-radius: var(--claude-radius);
   border: 1px solid var(--claude-border-light);
-  box-shadow: var(--claude-shadow-lg),
-  inset 0 1px 0 rgba(255, 255, 255, 0.1),
-  inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--claude-shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   z-index: 99999;
@@ -1078,16 +597,15 @@ onUnmounted(() => {
   width: 16px;
   height: 16px;
   z-index: 101;
-  transition: all 0.2s ease;
 }
 
 .claude-resize-corner::before {
   content: '';
   position: absolute;
-  width: 0;
-  height: 0;
+  width: 12px;
+  height: 12px;
   opacity: 0;
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease;
 }
 
 .claude-resize-corner:hover::before,
@@ -1099,68 +617,56 @@ onUnmounted(() => {
   top: 0;
   left: 0;
   cursor: nwse-resize;
-  border-radius: var(--claude-radius) 0 0 0;
-}
-
-.claude-resize-nw::before {
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-top: 3px solid var(--claude-primary);
-  border-left: 3px solid var(--claude-primary);
-  border-radius: 4px 0 0 0;
-  box-shadow: 0 0 10px var(--claude-primary-glow);
 }
 
 .claude-resize-ne {
   top: 0;
   right: 0;
   cursor: nesw-resize;
-  border-radius: 0 var(--claude-radius) 0 0;
-}
-
-.claude-resize-ne::before {
-  top: 2px;
-  right: 2px;
-  width: 12px;
-  height: 12px;
-  border-top: 3px solid var(--claude-primary);
-  border-right: 3px solid var(--claude-primary);
-  border-radius: 0 4px 0 0;
-  box-shadow: 0 0 10px var(--claude-primary-glow);
 }
 
 .claude-resize-sw {
   bottom: 0;
   left: 0;
   cursor: nesw-resize;
-  border-radius: 0 0 0 var(--claude-radius);
-}
-
-.claude-resize-sw::before {
-  bottom: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-bottom: 3px solid var(--claude-primary);
-  border-left: 3px solid var(--claude-primary);
-  border-radius: 0 0 0 4px;
-  box-shadow: 0 0 10px var(--claude-primary-glow);
 }
 
 .claude-resize-se {
   bottom: 0;
   right: 0;
   cursor: nwse-resize;
-  border-radius: 0 0 var(--claude-radius) 0;
+}
+
+.claude-resize-nw::before {
+  top: 2px;
+  left: 2px;
+  border-top: 3px solid var(--claude-primary);
+  border-left: 3px solid var(--claude-primary);
+  border-radius: 4px 0 0 0;
+  box-shadow: 0 0 10px var(--claude-primary-glow);
+}
+
+.claude-resize-ne::before {
+  top: 2px;
+  right: 2px;
+  border-top: 3px solid var(--claude-primary);
+  border-right: 3px solid var(--claude-primary);
+  border-radius: 0 4px 0 0;
+  box-shadow: 0 0 10px var(--claude-primary-glow);
+}
+
+.claude-resize-sw::before {
+  bottom: 2px;
+  left: 2px;
+  border-bottom: 3px solid var(--claude-primary);
+  border-left: 3px solid var(--claude-primary);
+  border-radius: 0 0 0 4px;
+  box-shadow: 0 0 10px var(--claude-primary-glow);
 }
 
 .claude-resize-se::before {
   bottom: 2px;
   right: 2px;
-  width: 12px;
-  height: 12px;
   border-bottom: 3px solid var(--claude-primary);
   border-right: 3px solid var(--claude-primary);
   border-radius: 0 0 4px 0;

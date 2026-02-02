@@ -30,10 +30,22 @@ const emit = defineEmits<{
         class="claude-btn-icon"
         @click="emit('share')"
       >
-        <svg v-if="showShareCopied" fill="currentColor" height="18" viewBox="0 0 24 24" width="18">
+        <svg
+          v-if="showShareCopied"
+          fill="currentColor"
+          height="18"
+          viewBox="0 0 24 24"
+          width="18"
+        >
           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
         </svg>
-        <svg v-else fill="currentColor" height="18" viewBox="0 0 24 24" width="18">
+        <svg
+          v-else
+          fill="currentColor"
+          height="18"
+          viewBox="0 0 24 24"
+          width="18"
+        >
           <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z" />
         </svg>
       </button>
@@ -43,7 +55,12 @@ const emit = defineEmits<{
         title="History"
         @click="emit('history')"
       >
-        <svg fill="currentColor" height="18" viewBox="0 0 24 24" width="18">
+        <svg
+          fill="currentColor"
+          height="18"
+          viewBox="0 0 24 24"
+          width="18"
+        >
           <path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" />
         </svg>
       </button>
@@ -53,7 +70,12 @@ const emit = defineEmits<{
         title="New chat"
         @click="emit('newChat')"
       >
-        <svg fill="currentColor" height="18" viewBox="0 0 24 24" width="18">
+        <svg
+          fill="currentColor"
+          height="18"
+          viewBox="0 0 24 24"
+          width="18"
+        >
           <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
         </svg>
       </button>

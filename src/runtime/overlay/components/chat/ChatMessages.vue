@@ -84,7 +84,10 @@ defineExpose({ scrollToBottom })
           class="claude-message-sender"
         >
           {{ message.senderNickname }}
-          <span v-if="isOwnMessage(message.senderId)" class="claude-message-you">(you)</span>
+          <span
+            v-if="isOwnMessage(message.senderId)"
+            class="claude-message-you"
+          >(you)</span>
         </div>
         <div class="claude-message-content">
           {{ getDisplayContent(message) }}
@@ -95,7 +98,10 @@ defineExpose({ scrollToBottom })
       <template v-else-if="message.role === 'assistant'">
         <div class="claude-message-content">
           <template v-if="message.contentBlocks?.length">
-            <template v-for="(block, idx) in message.contentBlocks" :key="idx">
+            <template
+              v-for="(block, idx) in message.contentBlocks"
+              :key="idx"
+            >
               <MarkdownContent
                 v-if="block.type === 'text' && block.text"
                 :content="stripContextBlock(block.text)"
@@ -110,7 +116,10 @@ defineExpose({ scrollToBottom })
           <template v-else-if="message.content">
             <MarkdownContent :content="getDisplayContent(message)" />
           </template>
-          <span v-if="message.streaming" class="claude-cursor" />
+          <span
+            v-if="message.streaming"
+            class="claude-cursor"
+          />
         </div>
       </template>
 
