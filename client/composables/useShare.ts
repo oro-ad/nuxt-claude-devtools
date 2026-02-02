@@ -224,6 +224,18 @@ export function useShare(options: ShareOptions = {}) {
     socket.emit('share:is_active')
   }
 
+  // Sync existing credentials with server (for cross-project tunnel scenarios)
+  // This auto-registers the user if they have localStorage credentials
+  // but don't exist in the current project's share.json
+  function syncCredentials(socket: Socket | null) {
+    if (!socket || !userId.value || !nickname.value) return
+
+    socket.emit('share:sync', {
+      userId: userId.value,
+      nickname: nickname.value,
+    })
+  }
+
   // Register user on server
   function registerUser(socket: Socket | null) {
     if (!socket || !userId.value || !nickname.value) return
@@ -271,6 +283,26 @@ export function useShare(options: ShareOptions = {}) {
       nicknameError.value = 'This nickname is already taken'
       showNicknameModal.value = true
     })
+
+    socket.on('share:synced', (data: { user: ShareUser | null, status: 'exists' | 'registered' | 'nickname_conflict' }) => {
+      if (data.status === 'nickname_conflict') {
+        // Nickname from localStorage conflicts with existing user in this project
+        // Clear local nickname and show modal to choose new one
+        nickname.value = null
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEY_NICKNAME)
+        }
+        nicknameError.value = 'Your nickname is already used by another user in this project'
+        showNicknameModal.value = true
+      }
+      else if (data.user) {
+        // Successfully synced or already exists
+        nickname.value = data.user.nickname
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_NICKNAME, data.user.nickname)
+        }
+      }
+    })
   }
 
   // Get nickname by ID
@@ -314,6 +346,7 @@ export function useShare(options: ShareOptions = {}) {
     needsNicknameForMessage,
     needsNicknameForShare,
     checkSharingStatus,
+    syncCredentials,
     registerUser,
     setupSocketListeners,
     getNicknameById,

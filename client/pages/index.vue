@@ -74,6 +74,7 @@ const {
   needsNicknameForMessage,
   needsNicknameForShare,
   checkSharingStatus,
+  syncCredentials,
   registerUser,
   setupSocketListeners: setupShareListeners,
   isOwnMessage,
@@ -283,9 +284,11 @@ onMounted(() => {
       // Check if sharing is active on server (for message interception)
       checkSharingStatus(newSocket)
 
-      // Register user if we have nickname and user ID
+      // Sync existing credentials with server (handles cross-project tunnel scenarios)
+      // This will auto-register user if they have localStorage credentials
+      // but don't exist in the current project's share.json
       if (userId.value && nickname.value) {
-        registerUser(newSocket)
+        syncCredentials(newSocket)
       }
       // Show nickname modal immediately only if invited via URL
       else if (needsNicknameImmediate()) {

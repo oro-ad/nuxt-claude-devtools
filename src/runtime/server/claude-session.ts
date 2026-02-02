@@ -632,6 +632,33 @@ export class ClaudeSession {
         this.shareManager.updateLastSeen(data.userId)
       })
 
+      // Sync existing credentials from another project
+      // This is called when user already has userId/nickname in localStorage
+      // but may not exist in this project's share.json
+      socket.on('share:sync', (data: { userId: string, nickname: string }) => {
+        log('Share sync requested', { userId: data.userId, nickname: data.nickname })
+
+        // Check if user already exists with this ID
+        const existingUser = this.shareManager.getUser(data.userId)
+        if (existingUser) {
+          // User exists in this project, just confirm
+          socket.emit('share:synced', { user: existingUser, status: 'exists' })
+          return
+        }
+
+        // User doesn't exist in this project - check if nickname is available
+        if (!this.shareManager.isNicknameAvailable(data.nickname)) {
+          // Nickname taken by someone else in this project
+          socket.emit('share:synced', { user: null, status: 'nickname_conflict' })
+          return
+        }
+
+        // Auto-register the user in this project's share.json
+        const user = this.shareManager.registerUser(data.userId, data.nickname)
+        socket.emit('share:synced', { user, status: 'registered' })
+        log('Auto-synced user from another project', { userId: data.userId, nickname: data.nickname })
+      })
+
       socket.on('disconnect', () => {
         log('Client disconnected', { socketId: socket.id })
       })
