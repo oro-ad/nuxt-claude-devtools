@@ -81,83 +81,145 @@ const resultPreview = computed(() => {
 </template>
 
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOOL CALL BLOCK - Glassmorphism styled tool call display
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .claude-tool-block {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  margin: 8px 0;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  margin: 10px 0;
   overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.claude-tool-block:hover {
+  border-color: rgba(254, 154, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .claude-tool-header {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 10px 14px;
   background: transparent;
   border: none;
-  color: var(--claude-text);
+  color: rgba(255, 255, 255, 0.9);
   cursor: pointer;
   font-size: 13px;
   text-align: left;
-  transition: background 0.15s;
+  transition: all 0.15s ease;
 }
 
 .claude-tool-header:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(254, 154, 0, 0.1);
 }
 
 .claude-tool-icon {
-  font-size: 12px;
+  font-size: 13px;
+  filter: drop-shadow(0 0 6px currentColor);
 }
 
 .claude-tool-name {
   flex: 1;
-  font-family: monospace;
-  color: var(--claude-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  color: #FBBF24;
+  text-shadow: 0 0 15px rgba(254, 154, 0, 0.4);
 }
 
 .claude-tool-expand {
   font-size: 10px;
-  color: var(--claude-text-muted);
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.claude-tool-header:hover .claude-tool-expand {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .claude-tool-details {
-  padding: 0 12px 12px;
+  padding: 0 14px 14px;
+  animation: tool-details-in 0.2s ease-out;
+}
+
+@keyframes tool-details-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .claude-tool-section {
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 .claude-tool-section-title {
   font-size: 11px;
-  color: var(--claude-text-muted);
-  margin-bottom: 4px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 6px;
   display: flex;
   align-items: center;
   gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .claude-tool-error-badge {
-  background: #ef4444;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
   font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .claude-tool-code {
-  background: #0d0d0d;
-  border-radius: 4px;
-  padding: 8px;
-  font-family: 'SF Mono', Monaco, monospace;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, monospace;
   font-size: 11px;
+  line-height: 1.5;
   overflow-x: auto;
   max-height: 200px;
   overflow-y: auto;
   margin: 0;
   white-space: pre-wrap;
   word-break: break-all;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Custom scrollbar for code blocks */
+.claude-tool-code::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.claude-tool-code::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.claude-tool-code::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.claude-tool-code::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 </style>

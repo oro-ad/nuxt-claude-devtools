@@ -1,0 +1,6 @@
+export { default as ChatHeader } from './ChatHeader.vue'
+export { default as ChatInput } from './ChatInput.vue'
+export { default as ChatMessages } from './ChatMessages.vue'
+export { default as ClaudeBadge } from './ClaudeBadge.vue'
+export { default as HistoryPanel } from './HistoryPanel.vue'
+export { default as NicknameModal } from './NicknameModal.vue'

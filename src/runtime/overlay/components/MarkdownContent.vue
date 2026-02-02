@@ -32,45 +32,59 @@ const renderedContent = computed(() => {
 </template>
 
 <style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARKDOWN CONTENT - Glassmorphism styled markdown rendering
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .markdown-content {
   font-size: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.625;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.7;
   word-break: break-word;
+  color: rgba(255, 255, 255, 0.92);
 }
 
-/* Headers */
+/* Headers - with gradient text */
 .markdown-content h1 {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.75) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .markdown-content h2 {
-  font-size: 1.125rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  margin-top: 0.75rem;
+  margin-top: 1rem;
   margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .markdown-content h3 {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  margin-top: 0.5rem;
-  margin-bottom: 0.25rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.375rem;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 /* Paragraphs */
 .markdown-content p {
-  margin: 0.5rem 0;
+  margin: 0.625rem 0;
 }
 
 /* Lists */
 .markdown-content ul,
 .markdown-content ol {
-  margin: 0.5rem 0;
-  margin-left: 1rem;
+  margin: 0.625rem 0;
+  margin-left: 1.25rem;
 }
 
 .markdown-content ul {
@@ -82,89 +96,150 @@ const renderedContent = computed(() => {
 }
 
 .markdown-content li {
-  margin: 0.25rem 0;
+  margin: 0.375rem 0;
+  color: rgba(255, 255, 255, 0.88);
 }
 
-/* Inline code */
+.markdown-content li::marker {
+  color: rgba(254, 154, 0, 0.7);
+}
+
+/* Inline code - glass style */
 .markdown-content code {
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', Consolas, monospace;
-  font-size: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, monospace;
+  font-size: 0.8rem;
+  background: rgba(254, 154, 0, 0.12);
+  border: 1px solid rgba(254, 154, 0, 0.2);
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  color: #FCD34D;
 }
 
-/* Code blocks */
+/* Code blocks - frosted glass container */
 .markdown-content pre {
-  margin: 0.5rem 0;
-  padding: 0.75rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
+  margin: 0.75rem 0;
+  padding: 1rem 1.125rem;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   overflow-x: auto;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .markdown-content pre code {
   background: transparent;
+  border: none;
   padding: 0;
-  font-size: 0.8rem;
-  line-height: 1.5;
+  font-size: 0.825rem;
+  line-height: 1.6;
+  color: #e2e8f0;
 }
 
-/* Blockquotes */
+/* Blockquotes - glass accent border */
 .markdown-content blockquote {
-  margin: 0.5rem 0;
-  padding-left: 1rem;
-  border-left: 4px solid rgba(255, 255, 255, 0.2);
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  padding-left: 1.25rem;
+  background: rgba(254, 154, 0, 0.08);
+  border-left: 3px solid rgba(254, 154, 0, 0.5);
+  border-radius: 0 10px 10px 0;
   font-style: italic;
-  color: var(--claude-text-muted, #a0a0a0);
+  color: rgba(255, 255, 255, 0.7);
 }
 
-/* Links */
+.markdown-content blockquote p {
+  margin: 0;
+}
+
+/* Links - gradient hover effect */
 .markdown-content a {
-  color: #3b82f6;
+  color: #FBBF24;
   text-decoration: none;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
 }
 
 .markdown-content a:hover {
-  text-decoration: underline;
+  color: #FCD34D;
+  border-bottom-color: rgba(254, 154, 0, 0.5);
+  text-shadow: 0 0 12px rgba(254, 154, 0, 0.4);
 }
 
-/* Tables */
+/* Tables - glass styled */
 .markdown-content table {
-  margin: 0.5rem 0;
+  margin: 0.75rem 0;
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.875rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .markdown-content th,
 .markdown-content td {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 0.5rem 0.75rem;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.625rem 0.875rem;
   text-align: left;
 }
 
 .markdown-content th {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(254, 154, 0, 0.15);
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.markdown-content tr:last-child td {
+  border-bottom: none;
 }
 
 .markdown-content tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-/* Horizontal rules */
+.markdown-content tr:hover {
+  background: rgba(254, 154, 0, 0.08);
+}
+
+/* Horizontal rules - gradient line */
 .markdown-content hr {
-  margin: 1rem 0;
+  margin: 1.25rem 0;
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(254, 154, 0, 0.4) 20%,
+    rgba(59, 130, 246, 0.4) 80%,
+    transparent 100%
+  );
 }
 
-/* Images */
+/* Images - rounded with shadow */
 .markdown-content img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Strong/Bold */
+.markdown-content strong {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.98);
+}
+
+/* Emphasis/Italic */
+.markdown-content em {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* First/last child margin cleanup */
