@@ -3,6 +3,7 @@
     "title": "AI-Powered DevTools",
     "tagline": "Bring Claude AI directly into your Nuxt development workflow. Chat, debug, and build faster with context-aware assistance.",
     "get_started": "Get Started",
+    "see_more": "See More",
     "view_npm": "View on npm",
     "preview_title": "Nuxt DevTools — Claude AI",
     "preview_user": "How do I add authentication to this component?",
@@ -93,7 +94,7 @@
   "cta": {
     "title": "Ready to supercharge your development?",
     "subtitle": "Join developers using Claude to build better Nuxt applications faster.",
-    "get_started": "Get Started Free",
+    "get_started": "Learn More",
     "view_npm": "View on npm"
   },
   "footer": {

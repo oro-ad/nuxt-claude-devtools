@@ -3,6 +3,7 @@
     "title": "AI 驱动的开发工具",
     "tagline": "将 Claude AI 直接集成到您的 Nuxt 开发工作流程中。通过上下文感知的帮助，更快地聊天、调试和构建。",
     "get_started": "开始使用",
+    "see_more": "了解更多",
     "view_npm": "在 npm 查看",
     "preview_title": "Nuxt DevTools — Claude AI",
     "preview_user": "如何为这个组件添加身份验证？",
@@ -93,7 +94,7 @@
   "cta": {
     "title": "准备好加速您的开发了吗？",
     "subtitle": "加入使用 Claude 更快构建更好的 Nuxt 应用程序的开发者行列。",
-    "get_started": "免费开始",
+    "get_started": "了解更多",
     "view_npm": "在 npm 查看"
   },
   "footer": {

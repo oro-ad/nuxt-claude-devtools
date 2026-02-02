@@ -2,6 +2,7 @@
   "private": true,
   "name": "@oro.ad/nuxt-claude-devtools-playground",
   "dependencies": {
+    "@nuxtjs/color-mode": "^4.0.0",
     "@nuxtjs/i18n": "^10.2.1"
   }
 }

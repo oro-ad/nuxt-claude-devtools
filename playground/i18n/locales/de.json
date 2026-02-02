@@ -3,6 +3,7 @@
     "title": "KI-gestützte DevTools",
     "tagline": "Integrieren Sie Claude AI direkt in Ihren Nuxt-Entwicklungsworkflow. Chatten, debuggen und entwickeln Sie schneller mit kontextbewusster Unterstützung.",
     "get_started": "Loslegen",
+    "see_more": "Mehr erfahren",
     "view_npm": "Auf npm ansehen",
     "preview_title": "Nuxt DevTools — Claude AI",
     "preview_user": "Wie füge ich diesem Komponenten Authentifizierung hinzu?",
@@ -93,7 +94,7 @@
   "cta": {
     "title": "Bereit, Ihre Entwicklung zu beschleunigen?",
     "subtitle": "Schließen Sie sich Entwicklern an, die Claude nutzen, um bessere Nuxt-Anwendungen schneller zu erstellen.",
-    "get_started": "Kostenlos loslegen",
+    "get_started": "Mehr erfahren",
     "view_npm": "Auf npm ansehen"
   },
   "footer": {

@@ -3,6 +3,7 @@
     "title": "AI搭載DevTools",
     "tagline": "Claude AIをNuxt開発ワークフローに直接統合。コンテキストを理解したアシスタントで、より速くチャット、デバッグ、開発できます。",
     "get_started": "始める",
+    "see_more": "詳しく見る",
     "view_npm": "npmで見る",
     "preview_title": "Nuxt DevTools — Claude AI",
     "preview_user": "このコンポーネントに認証を追加するには？",
@@ -93,7 +94,7 @@
   "cta": {
     "title": "開発を加速する準備はできましたか？",
     "subtitle": "Claudeを使ってより良いNuxtアプリケーションをより速く構築する開発者に参加しましょう。",
-    "get_started": "無料で始める",
+    "get_started": "詳しく見る",
     "view_npm": "npmで見る"
   },
   "footer": {

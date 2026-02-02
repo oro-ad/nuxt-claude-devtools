@@ -12,6 +12,9 @@ export default defineNuxtConfig({
     // i18n module
     '@nuxtjs/i18n',
 
+    // Color mode
+    '@nuxtjs/color-mode',
+
     // Start a sub Nuxt Server for developing the client
     defineNuxtModule({
       setup(_, nuxt) {
@@ -36,6 +39,12 @@ export default defineNuxtConfig({
 
   devtools: {
     enabled: false,
+  },
+
+  colorMode: {
+    preference: 'system',
+    fallback: 'dark',
+    classSuffix: '',
   },
 
   compatibilityDate: '2024-08-21',

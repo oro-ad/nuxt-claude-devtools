@@ -1,10 +1,11 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '#imports'
 
 const { locale, locales, setLocale } = useI18n()
 
 const isOpen = ref(false)
+const switcherRef = ref<HTMLElement | null>(null)
 
 const flags: Record<string, string> = {
   en: '🇺🇸',
@@ -45,13 +46,24 @@ function toggleDropdown() {
   isOpen.value = !isOpen.value
 }
 
-function _closeDropdown() {
-  isOpen.value = false
+function handleClickOutside(e: MouseEvent) {
+  if (switcherRef.value && !switcherRef.value.contains(e.target as Node)) {
+    isOpen.value = false
+  }
 }
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
   <div
+    ref="switcherRef"
     class="language-switcher"
   >
     <button
@@ -95,18 +107,18 @@ function _closeDropdown() {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: var(--color-bg-elevated, #1a1a1a);
-  border: 1px solid var(--color-border, #333);
-  border-radius: var(--radius, 8px);
-  color: var(--color-text, #fff);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm, 8px);
+  color: var(--color-text-muted, #94a3b8);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .current-lang:hover {
-  border-color: var(--color-primary, #10a37f);
+  color: var(--color-text, #fff);
 }
 
 .flag {
@@ -116,7 +128,7 @@ function _closeDropdown() {
 
 .arrow {
   font-size: 0.75rem;
-  color: var(--color-text-muted, #a0a0a0);
+  color: var(--color-text-muted, #94a3b8);
   transition: transform 0.2s ease;
 }
 
@@ -126,13 +138,15 @@ function _closeDropdown() {
 
 .dropdown {
   position: absolute;
-  top: calc(100% + 0.5rem);
+  top: calc(100% + 0.75rem);
   right: 0;
-  min-width: 160px;
-  background: var(--color-bg-elevated, #1a1a1a);
-  border: 1px solid var(--color-border, #333);
-  border-radius: var(--radius, 8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  min-width: 180px;
+  background: var(--color-bg-elevated, rgba(20, 20, 30, 0.9));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius, 16px);
+  box-shadow: var(--shadow-lg, 0 16px 64px rgba(0, 0, 0, 0.5));
   overflow: hidden;
   z-index: 100;
 }
@@ -140,20 +154,20 @@ function _closeDropdown() {
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   width: 100%;
-  padding: 0.625rem 0.75rem;
+  padding: 0.75rem 1rem;
   background: transparent;
   border: none;
-  color: var(--color-text-muted, #a0a0a0);
+  color: var(--color-text-muted, #94a3b8);
   font-size: 0.875rem;
   text-align: left;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .dropdown-item:hover {
-  background: rgba(16, 163, 127, 0.1);
+  background: rgba(16, 163, 127, 0.15);
   color: var(--color-text, #fff);
 }
 

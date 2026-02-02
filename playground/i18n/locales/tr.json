@@ -3,6 +3,7 @@
     "title": "Yapay Zeka Destekli DevTools",
     "tagline": "Claude AI'yi dogrudan Nuxt gelistirme is akisiniza entegre edin. Baglam bilincli yardimla sohbet edin, hata ayiklayin ve daha hizli gelistirin.",
     "get_started": "Basla",
+    "see_more": "Daha Fazla",
     "view_npm": "npm'de Goruntule",
     "preview_title": "Nuxt DevTools — Claude AI",
     "preview_user": "Bu bilesene kimlik dogrulama nasil eklerim?",
@@ -93,7 +94,7 @@
   "cta": {
     "title": "Gelistirmenizi guclendirilmeye hazir misiniz?",
     "subtitle": "Daha iyi Nuxt uygulamalari daha hizli olusturmak icin Claude kullanan gelistiricilere katilin.",
-    "get_started": "Ucretsiz Baslat",
+    "get_started": "Daha Fazla",
     "view_npm": "npm'de Goruntule"
   },
   "footer": {

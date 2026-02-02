@@ -1,9 +1,37 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from '#imports'
 
 const { t } = useI18n()
+
+// Scroll reveal
+const revealElements = ref<Element[]>([])
+
+function handleIntersection(entries: IntersectionObserverEntry[]) {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('revealed')
+    }
+  })
+}
+
+let observer: IntersectionObserver | null = null
+
+onMounted(() => {
+  observer = new IntersectionObserver(handleIntersection, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px',
+  })
+
+  document.querySelectorAll('.reveal').forEach((el) => {
+    observer?.observe(el)
+  })
+})
+
+onUnmounted(() => {
+  observer?.disconnect()
+})
 
 const features = computed(() => [
   {
@@ -83,14 +111,22 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 <template>
   <div class="app">
-    <!-- Language Switcher -->
-    <div class="language-bar">
+    <!-- Floating Orbs (wow effect) -->
+    <div class="floating-orbs">
+      <div class="orb orb-1" />
+      <div class="orb orb-2" />
+      <div class="orb orb-3" />
+    </div>
+
+    <!-- Settings Bar -->
+    <div class="settings-bar">
+      <ThemeToggle />
       <LanguageSwitcher />
     </div>
 
     <!-- Hero Section -->
     <header class="hero">
-      <div class="hero-content">
+      <div class="hero-content reveal reveal-left">
         <div class="logo">
           <span class="logo-nuxt">Nuxt</span>
           <span class="logo-plus">+</span>
@@ -133,11 +169,11 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
         <div class="hero-actions">
           <a
-            :href="repoUrl"
+            :href="docsUrl"
             class="btn btn-primary"
             target="_blank"
           >
-            <span>📦</span> {{ t('hero.get_started') }}
+            <span>✨</span> {{ t('hero.see_more') || 'See More' }}
           </a>
           <a
             :href="`https://npmjs.com/package/${npmPackage}`"
@@ -148,7 +184,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
           </a>
         </div>
       </div>
-      <div class="hero-visual">
+      <div class="hero-visual reveal reveal-right">
         <div class="devtools-preview">
           <div class="preview-header">
             <div class="preview-dots">
@@ -170,15 +206,16 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Features Section -->
     <section class="features">
-      <h2>{{ t('features.section_title') }}</h2>
-      <p class="section-subtitle">
+      <h2 class="reveal reveal-up">{{ t('features.section_title') }}</h2>
+      <p class="section-subtitle reveal reveal-up">
         {{ t('features.section_subtitle') }}
       </p>
       <div class="features-grid">
         <div
-          v-for="feature in features"
+          v-for="(feature, index) in features"
           :key="feature.key"
-          class="feature-card"
+          :style="{ transitionDelay: `${index * 0.05}s` }"
+          class="feature-card reveal reveal-up"
         >
           <span class="feature-icon">{{ feature.icon }}</span>
           <h3>{{ feature.title }}</h3>
@@ -190,7 +227,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
     <!-- Collaborative Section -->
     <section class="collaborative">
       <div class="collab-content">
-        <div class="collab-text">
+        <div class="collab-text reveal reveal-left">
           <span class="collab-badge">{{ t('collaborative.badge') }}</span>
           <h2>{{ t('collaborative.title') }}</h2>
           <p class="collab-description">
@@ -211,7 +248,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
             </li>
           </ul>
         </div>
-        <div class="collab-visual">
+        <div class="collab-visual reveal reveal-right">
           <div class="collab-demo">
             <div class="demo-terminal">
               <div class="terminal-header">
@@ -239,12 +276,12 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Modes Section -->
     <section class="modes">
-      <h2>{{ t('modes.section_title') }}</h2>
-      <p class="section-subtitle">
+      <h2 class="reveal reveal-up">{{ t('modes.section_title') }}</h2>
+      <p class="section-subtitle reveal reveal-up">
         {{ t('modes.section_subtitle') }}
       </p>
       <div class="modes-grid">
-        <div class="mode-card mode-light">
+        <div class="mode-card mode-light reveal reveal-left">
           <div class="mode-badge">
             {{ t('modes.light.badge') }}
           </div>
@@ -263,7 +300,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
             <code>claudeDevtools: { overlay: { enabled: true } }</code>
           </div>
         </div>
-        <div class="mode-card mode-devtools">
+        <div class="mode-card mode-devtools reveal reveal-right">
           <div class="mode-badge">
             {{ t('modes.devtools.badge') }}
           </div>
@@ -287,15 +324,16 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Quick Start Section -->
     <section class="quickstart">
-      <h2>{{ t('quickstart.title') }}</h2>
-      <p class="section-subtitle">
+      <h2 class="reveal reveal-up">{{ t('quickstart.title') }}</h2>
+      <p class="section-subtitle reveal reveal-up">
         {{ t('quickstart.subtitle') }}
       </p>
       <div class="steps">
         <div
-          v-for="item in quickStart"
+          v-for="(item, index) in quickStart"
           :key="item.step"
-          class="step"
+          :style="{ transitionDelay: `${index * 0.1}s` }"
+          class="step reveal reveal-up"
         >
           <div class="step-number">
             {{ item.step }}
@@ -312,9 +350,9 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- CTA Section -->
     <section class="cta">
-      <h2>{{ t('cta.title') }}</h2>
-      <p>{{ t('cta.subtitle') }}</p>
-      <div class="cta-actions">
+      <h2 class="reveal reveal-up">{{ t('cta.title') }}</h2>
+      <p class="reveal reveal-up">{{ t('cta.subtitle') }}</p>
+      <div class="cta-actions reveal reveal-up">
         <a
           :href="repoUrl"
           class="btn btn-primary btn-large"
@@ -373,14 +411,88 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 <style scoped>
 .app {
   min-height: 100vh;
+  background: var(--gradient-bg);
+  background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* Language Bar */
-.language-bar {
+/* Floating Orbs - Wow Effect */
+.floating-orbs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: float 20s ease-in-out infinite;
+}
+
+.orb-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(254, 154, 0, 0.3), transparent 70%);
+  top: -100px;
+  right: -100px;
+  animation-delay: 0s;
+}
+
+.orb-2 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255, 183, 64, 0.2), transparent 70%);
+  bottom: 20%;
+  left: -50px;
+  animation-delay: -7s;
+  animation-duration: 25s;
+}
+
+.orb-3 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(254, 154, 0, 0.2), transparent 70%);
+  top: 50%;
+  right: 10%;
+  animation-delay: -14s;
+  animation-duration: 30s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(30px, -30px) scale(1.05);
+  }
+  50% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+  75% {
+    transform: translate(20px, 10px) scale(1.02);
+  }
+}
+
+/* Settings Bar */
+.settings-bar {
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 100;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px;
+  background: var(--color-bg-elevated);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
 }
 
 /* Hero Section */
@@ -390,7 +502,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   gap: 60px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 80px 40px;
+  padding: 100px 40px;
   align-items: center;
 }
 
@@ -404,6 +516,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .logo-nuxt {
   color: var(--color-nuxt);
+  text-shadow: 0 0 20px rgba(0, 220, 130, 0.5);
 }
 
 .logo-plus {
@@ -413,6 +526,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .logo-claude {
   color: var(--color-claude);
+  text-shadow: 0 0 20px rgba(217, 119, 6, 0.5);
 }
 
 .hero h1 {
@@ -420,7 +534,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   font-weight: 700;
   line-height: 1.1;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #fff 0%, #a0a0a0 100%);
+  background: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-muted) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -464,40 +578,65 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   border: none;
 }
 
 .btn-primary {
-  background: var(--color-primary);
-  color: white;
+  background: linear-gradient(135deg, var(--color-primary), #ffb740);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(var(--color-primary-rgb), 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
 }
 
 .btn-primary:hover {
-  background: var(--color-primary-dark);
   transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(254, 154, 0, 0.6);
 }
 
 .btn-secondary {
   background: var(--color-bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
 
 .btn-secondary:hover {
   background: var(--color-bg-elevated);
-  border-color: var(--color-text-muted);
+  border-color: var(--color-border-strong);
+  transform: translateY(-2px);
 }
 
 .btn-outline {
   background: transparent;
   color: var(--color-text);
   border: 1px solid var(--color-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .btn-outline:hover {
   border-color: var(--color-primary);
   color: var(--color-primary);
+  background: rgba(254, 154, 0, 0.1);
 }
 
 .btn-large {
@@ -505,27 +644,29 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   font-size: 18px;
 }
 
-/* DevTools Preview */
+/* DevTools Preview - Glassmorphism */
 .devtools-preview {
   background: var(--color-bg-elevated);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: var(--radius);
   border: 1px solid var(--color-border);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
 }
 
 .preview-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   background: var(--color-bg-card);
   border-bottom: 1px solid var(--color-border);
 }
 
 .preview-dots {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
 .preview-dots span {
@@ -537,14 +678,17 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .preview-dots span:nth-child(1) {
   background: #ff5f57;
+  box-shadow: 0 0 8px rgba(255, 95, 87, 0.5);
 }
 
 .preview-dots span:nth-child(2) {
   background: #ffbd2e;
+  box-shadow: 0 0 8px rgba(255, 189, 46, 0.5);
 }
 
 .preview-dots span:nth-child(3) {
   background: #28ca41;
+  box-shadow: 0 0 8px rgba(40, 202, 65, 0.5);
 }
 
 .preview-title {
@@ -560,20 +704,24 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 }
 
 .chat-bubble {
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: var(--radius-sm);
   max-width: 85%;
   font-size: 14px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .chat-bubble.user {
-  background: rgba(16, 163, 127, 0.2);
-  color: #6ee7b7;
+  background: rgba(254, 154, 0, 0.15);
+  border: 1px solid rgba(254, 154, 0, 0.3);
+  color: var(--color-primary);
   align-self: flex-end;
 }
 
 .chat-bubble.assistant {
   background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
   color: var(--color-text-muted);
   align-self: flex-start;
 }
@@ -581,15 +729,12 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 .typing::after {
   content: '|';
   animation: blink 1s infinite;
+  color: var(--color-primary);
 }
 
 @keyframes blink {
-  0%, 50% {
-    opacity: 1;
-  }
-  51%, 100% {
-    opacity: 0;
-  }
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 
 /* Features Section */
@@ -606,6 +751,10 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   font-size: 40px;
   text-align: center;
   margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .section-subtitle {
@@ -618,24 +767,27 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 .features-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  gap: 20px;
 }
 
 .feature-card {
   background: var(--color-bg-elevated);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 24px;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
 }
 
 .feature-card:hover {
   border-color: var(--color-primary);
   transform: translateY(-4px);
+  box-shadow: var(--shadow-md), 0 0 30px rgba(254, 154, 0, 0.2);
 }
 
 .feature-icon {
-  font-size: 32px;
+  font-size: 36px;
   display: block;
   margin-bottom: 16px;
 }
@@ -643,18 +795,18 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 .feature-card h3 {
   font-size: 18px;
   margin-bottom: 8px;
+  color: var(--color-text);
 }
 
 .feature-card p {
   font-size: 14px;
   color: var(--color-text-muted);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 /* Collaborative Section */
 .collaborative {
   padding: 100px 40px;
-  background: linear-gradient(135deg, rgba(16, 163, 127, 0.05) 0%, rgba(0, 220, 130, 0.05) 100%);
 }
 
 .collab-content {
@@ -668,20 +820,22 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .collab-badge {
   display: inline-block;
-  padding: 6px 14px;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-nuxt));
-  border-radius: 20px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, var(--color-primary), #ffb740);
+  border-radius: 24px;
   font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   margin-bottom: 16px;
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .collab-text h2 {
   font-size: 40px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, #fff 0%, #a0a0a0 100%);
+  background: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-muted) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -690,7 +844,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 .collab-description {
   font-size: 18px;
   color: var(--color-text-muted);
-  line-height: 1.6;
+  line-height: 1.7;
   margin-bottom: 24px;
 }
 
@@ -725,19 +879,21 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 }
 
 .demo-terminal {
-  background: var(--color-bg);
+  background: var(--color-bg-solid);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   overflow: hidden;
   min-width: 360px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 .terminal-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   background: var(--color-bg-card);
   border-bottom: 1px solid var(--color-border);
 }
@@ -750,14 +906,17 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .terminal-dot.red {
   background: #ff5f57;
+  box-shadow: 0 0 8px rgba(255, 95, 87, 0.5);
 }
 
 .terminal-dot.yellow {
   background: #ffbd2e;
+  box-shadow: 0 0 8px rgba(255, 189, 46, 0.5);
 }
 
 .terminal-dot.green {
   background: #28ca41;
+  box-shadow: 0 0 8px rgba(40, 202, 65, 0.5);
 }
 
 .terminal-title {
@@ -770,17 +929,17 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .terminal-body code {
-  font-family: 'Fira Code', monospace;
-  font-size: 14px;
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 13px;
   color: var(--color-text);
 }
 
 .terminal-prompt {
-  color: var(--color-nuxt);
+  color: var(--color-primary);
   margin-right: 8px;
 }
 
@@ -794,8 +953,9 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 }
 
 .terminal-comment {
-  color: #6b7280 !important;
+  color: var(--color-text-muted) !important;
   font-style: italic;
+  opacity: 0.7;
 }
 
 .demo-share {
@@ -803,9 +963,11 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 14px 24px;
+  padding: 16px 24px;
   background: var(--color-bg-elevated);
-  border: 1px dashed var(--color-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px dashed var(--color-border-strong);
   border-radius: var(--radius);
 }
 
@@ -829,6 +991,10 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   font-size: 40px;
   text-align: center;
   margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--color-text) 0%, var(--color-text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .modes-grid {
@@ -840,45 +1006,52 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .mode-card {
   background: var(--color-bg-elevated);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 32px;
   position: relative;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
 }
 
 .mode-card:hover {
   transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
 .mode-light:hover {
   border-color: #f59e0b;
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(245, 158, 11, 0.15);
 }
 
 .mode-devtools:hover {
   border-color: var(--color-nuxt);
+  box-shadow: var(--shadow-lg), 0 0 30px rgba(0, 220, 130, 0.15);
 }
 
 .mode-badge {
   position: absolute;
   top: -12px;
   left: 24px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 24px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .mode-light .mode-badge {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: white;
+  background: linear-gradient(135deg, var(--color-primary), #ffb740);
+  color: #ffffff;
+  box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .mode-devtools .mode-badge {
   background: linear-gradient(135deg, var(--color-nuxt), #00b368);
   color: white;
+  box-shadow: 0 4px 15px rgba(0, 220, 130, 0.4);
 }
 
 .mode-icon {
@@ -890,12 +1063,13 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 .mode-card h3 {
   font-size: 24px;
   margin-bottom: 12px;
+  color: var(--color-text);
 }
 
 .mode-description {
   color: var(--color-text-muted);
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.7;
   margin-bottom: 20px;
 }
 
@@ -907,8 +1081,8 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .mode-features li {
   position: relative;
-  padding-left: 24px;
-  margin-bottom: 10px;
+  padding-left: 28px;
+  margin-bottom: 12px;
   color: var(--color-text-muted);
   font-size: 14px;
 }
@@ -922,7 +1096,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 }
 
 .mode-code {
-  background: var(--color-bg);
+  background: var(--color-bg-solid);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 16px;
@@ -934,11 +1108,11 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   color: var(--color-text-muted);
   margin-bottom: 8px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .mode-code code {
-  font-family: 'Fira Code', monospace;
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
   font-size: 13px;
   color: var(--color-nuxt);
 }
@@ -946,7 +1120,6 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 /* Quick Start Section */
 .quickstart {
   padding: 100px 40px;
-  background: var(--color-bg-elevated);
 }
 
 .steps {
@@ -964,16 +1137,17 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 }
 
 .step-number {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: var(--color-primary);
-  color: white;
+  background: linear-gradient(135deg, var(--color-primary), #ffb740);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.4);
 }
 
 .step-content {
@@ -982,25 +1156,25 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
 .step-text {
   font-size: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  color: var(--color-text);
 }
 
 .step-code {
   display: block;
-  background: var(--color-bg);
-  padding: 12px 16px;
+  background: var(--color-bg-solid);
+  padding: 14px 18px;
   border-radius: var(--radius-sm);
-  font-family: 'Fira Code', monospace;
-  font-size: 14px;
-  color: var(--color-nuxt);
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--color-primary);
   border: 1px solid var(--color-border);
 }
 
 /* CTA Section */
 .cta {
-  padding: 100px 40px;
+  padding: 120px 40px;
   text-align: center;
-  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-elevated) 100%);
 }
 
 .cta p {
@@ -1037,10 +1211,11 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 .footer a {
   color: var(--color-primary);
   text-decoration: none;
+  transition: color 0.2s;
 }
 
 .footer a:hover {
-  text-decoration: underline;
+  color: #ffb740;
 }
 
 .footer-links {
@@ -1056,12 +1231,45 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   color: var(--color-text);
 }
 
+/* Scroll Reveal Animations */
+.reveal {
+  opacity: 0;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.reveal-up {
+  transform: translateY(40px);
+}
+
+.reveal.reveal-left {
+  transform: translateX(-40px);
+}
+
+.reveal.reveal-right {
+  transform: translateX(40px);
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* Disable animations for reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .hero {
     grid-template-columns: 1fr;
     text-align: center;
-    padding: 60px 24px;
+    padding: 80px 24px;
   }
 
   .tagline {
@@ -1079,9 +1287,7 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
   .features-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-}
 
-@media (max-width: 1024px) {
   .collab-content {
     grid-template-columns: 1fr;
     text-align: center;
@@ -1102,49 +1308,19 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 }
 
 @media (max-width: 640px) {
-  .collaborative {
-    padding: 60px 16px;
-  }
-
-  .collab-text h2 {
-    font-size: 28px;
-  }
-
-  .demo-terminal {
-    min-width: auto;
-    width: 100%;
-  }
-
-  .modes {
-    padding: 60px 16px;
-  }
-
-  .mode-card {
-    padding: 24px;
-  }
-
-  .mode-icon {
-    font-size: 36px;
-  }
-
-  .mode-card h3 {
-    font-size: 20px;
-  }
-}
-
-@media (max-width: 640px) {
-  .language-bar {
+  .settings-bar {
     position: relative;
     top: 0;
     right: 0;
     display: flex;
     justify-content: center;
-    padding: 16px;
-    background: var(--color-bg);
+    margin: 16px;
+    background: var(--color-bg-elevated);
+    border-radius: var(--radius);
   }
 
   .hero {
-    padding: 20px 16px 40px;
+    padding: 20px 16px 60px;
   }
 
   .hero h1 {
@@ -1173,16 +1349,52 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
     padding: 60px 16px;
   }
 
-  .quickstart {
-    padding: 60px 16px;
-  }
-
   .features-grid {
     grid-template-columns: 1fr;
   }
 
-  .cta {
+  .features h2,
+  .modes h2,
+  .quickstart h2,
+  .cta h2 {
+    font-size: 28px;
+  }
+
+  .collaborative {
     padding: 60px 16px;
+  }
+
+  .collab-text h2 {
+    font-size: 28px;
+  }
+
+  .demo-terminal {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .modes {
+    padding: 60px 16px;
+  }
+
+  .mode-card {
+    padding: 24px;
+  }
+
+  .mode-icon {
+    font-size: 36px;
+  }
+
+  .mode-card h3 {
+    font-size: 20px;
+  }
+
+  .quickstart {
+    padding: 60px 16px;
+  }
+
+  .cta {
+    padding: 80px 16px;
   }
 
   .cta-actions {
