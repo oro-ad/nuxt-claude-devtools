@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import type { ComputedRef, Ref } from 'vue'
 import type { Socket } from 'socket.io-client'
 import { io } from 'socket.io-client'
-import type { ContentBlock, Conversation, DocFile, Message, SlashCommand } from '../types'
+import type { ContentBlock, Conversation, DocFile, ImageAttachment, Message, SlashCommand } from '../types'
 import { SOCKET_PATH } from '../constants'
 
 export interface UseChatCoreOptions {
@@ -37,7 +37,7 @@ export interface UseChatCoreReturn {
   connectSocket: () => void
   disconnect: () => void
   newChat: () => void
-  sendMessage: (content: string, senderId?: string, senderNickname?: string) => boolean
+  sendMessage: (content: string, senderId?: string, senderNickname?: string, attachments?: ImageAttachment[]) => boolean
   stopGeneration: () => boolean
   addMessage: (role: Message['role'], content: string, streaming?: boolean) => Message
   toggleHistory: () => void
@@ -390,18 +390,36 @@ export function useClaudeChatCore(options: UseChatCoreOptions): UseChatCoreRetur
     }
   }
 
-  function sendMessage(content: string, senderId?: string, senderNickname?: string): boolean {
-    if (!content.trim() || isProcessing.value || !isConnected.value) return false
+  function sendMessage(content: string, senderId?: string, senderNickname?: string, attachments?: ImageAttachment[]): boolean {
+    // Allow send if there's content OR attachments
+    const hasContent = content.trim().length > 0 || (attachments && attachments.length > 0)
+    if (!hasContent || isProcessing.value || !isConnected.value) return false
 
     const userMsg = addMessage('user', content)
     if (senderId) {
       userMsg.senderId = senderId
       userMsg.senderNickname = senderNickname
     }
+    // Add attachment metadata for display (without base64 data)
+    if (attachments && attachments.length > 0) {
+      userMsg.attachments = attachments.map(a => ({
+        type: 'image' as const,
+        path: `pending:${a.id}`, // Will be updated when server responds
+        filename: a.filename,
+        mimeType: a.mimeType,
+      }))
+    }
     addMessage('assistant', '', true)
 
     if (socket.value) {
-      socket.value.emit('message:send', senderId ? { message: content, senderId } : content)
+      const payload: { message: string, senderId?: string, attachments?: ImageAttachment[] } = { message: content }
+      if (senderId) {
+        payload.senderId = senderId
+      }
+      if (attachments && attachments.length > 0) {
+        payload.attachments = attachments
+      }
+      socket.value.emit('message:send', payload)
     }
 
     return true

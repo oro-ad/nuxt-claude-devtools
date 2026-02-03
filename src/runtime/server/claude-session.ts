@@ -1,5 +1,7 @@
 import { execSync, spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Socket, Server as SocketServer } from 'socket.io'
 import { createLogger } from '../logger'
 import { AgentsManager } from './agents-manager'
@@ -13,7 +15,9 @@ import { SkillsManager } from './skills-manager'
 import type {
   AssistantEvent,
   ContentBlock,
+  ImageAttachment,
   Message,
+  MessageAttachment,
   ResultEvent,
   StreamEvent,
   TextBlock,
@@ -35,6 +39,9 @@ function generateId(): string {
 
 // Re-export for backward compatibility
 export { SOCKET_PATH } from '../constants'
+
+// Attachments directory (relative to project root)
+const ATTACHMENTS_DIR = '.claude-devtools/attached'
 
 type McpTransport = 'stdio' | 'http' | 'sse'
 type McpScope = 'global' | 'local'
@@ -130,12 +137,18 @@ export class ClaudeSession {
       const conversation = this.historyManager.getActiveConversation()
       socket.emit('history:loaded', conversation)
 
-      socket.on('message:send', (data: string | { message: string, senderId?: string }) => {
+      socket.on('message:send', (data: string | { message: string, senderId?: string, attachments?: ImageAttachment[] }) => {
         // Support both string (legacy) and object format
         const message = typeof data === 'string' ? data : data.message
         const senderId = typeof data === 'string' ? undefined : data.senderId
-        log('Message received', { length: message.length, senderId, preview: message.substring(0, 100) })
-        this.sendMessage(message, senderId)
+        const attachments = typeof data === 'string' ? undefined : data.attachments
+        log('Message received', {
+          length: message.length,
+          senderId,
+          attachments: attachments?.length || 0,
+          preview: message.substring(0, 100),
+        })
+        this.sendMessage(message, senderId, attachments)
       })
 
       socket.on('message:stop', () => {
@@ -728,6 +741,101 @@ export class ClaudeSession {
     this.wasStopped = false
   }
 
+  /**
+   * Save image attachments to disk and return metadata
+   */
+  private saveAttachments(attachments?: ImageAttachment[]): MessageAttachment[] {
+    if (!attachments || attachments.length === 0) {
+      return []
+    }
+
+    const savedAttachments: MessageAttachment[] = []
+    const attachmentsDir = join(this.config.rootDir, ATTACHMENTS_DIR)
+
+    // Ensure attachments directory exists
+    if (!existsSync(attachmentsDir)) {
+      mkdirSync(attachmentsDir, { recursive: true })
+      log('Created attachments directory', { path: attachmentsDir })
+    }
+
+    for (const attachment of attachments) {
+      try {
+        // Generate unique filename with timestamp
+        const ext = this.getExtensionFromMimeType(attachment.mimeType, attachment.filename)
+        const filename = `${attachment.id}${ext}`
+        const relativePath = `${ATTACHMENTS_DIR}/${filename}`
+        const absolutePath = join(this.config.rootDir, relativePath)
+
+        // Decode base64 and save to file
+        const buffer = Buffer.from(attachment.data, 'base64')
+        writeFileSync(absolutePath, buffer)
+
+        log('Saved attachment', {
+          filename,
+          size: buffer.length,
+          path: relativePath,
+        })
+
+        savedAttachments.push({
+          type: 'image',
+          path: relativePath,
+          filename: attachment.filename,
+          mimeType: attachment.mimeType,
+        })
+      }
+      catch (error) {
+        log('Failed to save attachment', {
+          id: attachment.id,
+          error: getErrorMessage(error),
+        })
+      }
+    }
+
+    return savedAttachments
+  }
+
+  /**
+   * Get file extension from MIME type or filename
+   */
+  private getExtensionFromMimeType(mimeType: string, filename?: string): string {
+    // Try to get extension from filename first
+    if (filename) {
+      const ext = filename.split('.').pop()
+      if (ext && ext.length <= 10) {
+        return `.${ext}`
+      }
+    }
+
+    const mimeToExt: Record<string, string> = {
+      // Images
+      'image/png': '.png',
+      'image/jpeg': '.jpg',
+      'image/jpg': '.jpg',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+      'image/svg+xml': '.svg',
+      // Documents
+      'application/pdf': '.pdf',
+      'text/plain': '.txt',
+      'text/markdown': '.md',
+      'text/html': '.html',
+      'text/css': '.css',
+      'text/csv': '.csv',
+      // Code
+      'application/json': '.json',
+      'application/javascript': '.js',
+      'text/javascript': '.js',
+      'application/typescript': '.ts',
+      'text/typescript': '.ts',
+      'application/xml': '.xml',
+      'text/xml': '.xml',
+      // Archives
+      'application/zip': '.zip',
+      'application/gzip': '.gz',
+    }
+    return mimeToExt[mimeType] || '.bin'
+  }
+
   // Get DocsManager instance (for plugin initialization)
   getDocsManager(): DocsManager {
     return this.docsManager
@@ -966,7 +1074,7 @@ export class ClaudeSession {
     }
   }
 
-  private sendMessage(message: string, senderId?: string) {
+  private sendMessage(message: string, senderId?: string, attachments?: ImageAttachment[]) {
     if (this.isProcessing) {
       log('Already processing, ignoring message')
       return
@@ -979,14 +1087,32 @@ export class ClaudeSession {
     // Get sender nickname if available
     const senderNickname = senderId ? this.shareManager.getUser(senderId)?.nickname : undefined
 
+    // Save attachments and build attachment references
+    const savedAttachments = this.saveAttachments(attachments)
+    let attachmentRefs = ''
+    if (savedAttachments.length > 0) {
+      // Build explicit instruction for Claude to read files using the Read tool
+      const paths = savedAttachments.map(a => a.path)
+      attachmentRefs = `<attached-files>
+The user has attached ${savedAttachments.length} file(s). Use the Read tool to view each file:
+${paths.map(p => `- ${p}`).join('\n')}
+</attached-files>
+
+`
+    }
+
+    // Build full message with attachment references
+    const fullMessage = attachmentRefs + message
+
     // Save user message to history
     const userMessage: Message = {
       id: generateId(),
       role: 'user',
-      content: message,
+      content: message, // Store original message without refs
       timestamp: new Date().toISOString(),
       senderId,
       senderNickname,
+      attachments: savedAttachments.length > 0 ? savedAttachments : undefined,
     }
     this.historyManager.addMessage(userMessage)
 
@@ -1001,7 +1127,7 @@ export class ClaudeSession {
     const args = [
       ...this.config.args,
       '-p',
-      message,
+      fullMessage, // Send full message with attachment refs to Claude
       '--output-format', 'stream-json',
       '--verbose',
       '--dangerously-skip-permissions',

@@ -4,7 +4,7 @@ import { useClaudeChat } from '../../shared/composables/useClaudeChat'
 import { useVoiceInput } from '../../shared/composables/useVoiceInput'
 import { useShare } from '../../shared/composables/useShare'
 import { useMessageContext } from '../composables/useMessageContext'
-import type { SlashCommand } from '../../shared/types'
+import type { ImageAttachment, SlashCommand } from '../../shared/types'
 import { useMobileSwipe, usePanelInteraction, usePanelPosition } from '../composables'
 import { ChatHeader, ChatInput, ChatMessages, ClaudeBadge, HistoryPanel, NicknameModal } from './chat'
 
@@ -182,7 +182,7 @@ function collectContext(): string | null {
 // EVENT HANDLERS
 // ============================================================================
 
-function handleMessageSubmit(message: string) {
+function handleMessageSubmit(message: string, attachments?: ImageAttachment[]) {
   if (needsNicknameForMessage()) {
     pendingNicknameAction.value = 'message'
     showNicknameModal.value = true
@@ -194,6 +194,7 @@ function handleMessageSubmit(message: string) {
     context + message,
     isShareMode.value ? userId.value || undefined : undefined,
     nickname.value || undefined,
+    attachments,
   )
 }
 

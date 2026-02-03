@@ -1,7 +1,4 @@
 <template>
-  <!-- 1 -->
-  <!-- 2 -->
-  <!-- 3 -->
   <NuxtPage />
 </template>
 
@@ -35,7 +32,7 @@
 
   /* Gradient backgrounds */
   --gradient-bg: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(254, 154, 0, 0.12), transparent),
-                 radial-gradient(ellipse 50% 50% at 20% 80%, rgba(254, 154, 0, 0.06), transparent);
+  radial-gradient(ellipse 50% 50% at 20% 80%, rgba(254, 154, 0, 0.06), transparent);
 
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -63,7 +60,7 @@
 
   /* Gradient backgrounds */
   --gradient-bg: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(255, 105, 0, 0.1), transparent),
-                 radial-gradient(ellipse 50% 50% at 20% 80%, rgba(255, 105, 0, 0.05), transparent);
+  radial-gradient(ellipse 50% 50% at 20% 80%, rgba(255, 105, 0, 0.05), transparent);
 
   /* Shadows */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);

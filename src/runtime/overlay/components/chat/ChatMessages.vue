@@ -89,6 +89,40 @@ defineExpose({ scrollToBottom })
             class="claude-message-you"
           >(you)</span>
         </div>
+        <!-- File attachments -->
+        <div
+          v-if="message.attachments?.length"
+          class="claude-message-attachments"
+        >
+          <div
+            v-for="attachment in message.attachments"
+            :key="attachment.path"
+            class="claude-attachment-badge"
+            :title="attachment.filename"
+          >
+            <!-- Image icon -->
+            <svg
+              v-if="attachment.mimeType?.startsWith('image/')"
+              fill="currentColor"
+              height="14"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+            </svg>
+            <!-- File icon -->
+            <svg
+              v-else
+              fill="currentColor"
+              height="14"
+              viewBox="0 0 24 24"
+              width="14"
+            >
+              <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
+            </svg>
+            <span>{{ attachment.filename }}</span>
+          </div>
+        </div>
         <div class="claude-message-content">
           {{ getDisplayContent(message) }}
         </div>
@@ -248,6 +282,38 @@ defineExpose({ scrollToBottom })
   white-space: pre-wrap;
   word-break: break-word;
   border: 1px solid rgba(254, 154, 0, 0.2);
+}
+
+/* Image attachments */
+.claude-message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.claude-attachment-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(254, 154, 0, 0.15);
+  border: 1px solid rgba(254, 154, 0, 0.3);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--claude-primary);
+  max-width: 180px;
+}
+
+.claude-attachment-badge svg {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.claude-attachment-badge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .claude-message-assistant {

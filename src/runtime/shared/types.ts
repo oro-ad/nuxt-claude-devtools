@@ -26,6 +26,8 @@ export interface Message {
   // Collaborative sharing
   senderId?: string
   senderNickname?: string
+  // Image attachments
+  attachments?: MessageAttachment[]
 }
 
 export interface Conversation {
@@ -77,4 +79,20 @@ export interface ContextChip {
   label: string
   icon: string
   active: boolean
+}
+
+// Image attachment types
+export interface ImageAttachment {
+  id: string
+  filename: string
+  mimeType: string
+  data: string // base64
+  size: number // bytes
+}
+
+export interface MessageAttachment {
+  type: 'image'
+  path: string // relative path in project
+  filename: string
+  mimeType: string
 }

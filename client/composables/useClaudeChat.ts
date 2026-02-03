@@ -2,7 +2,7 @@
  * useClaudeChat composable for DevTools Client
  * Uses shared core with DevTools-specific features
  */
-import type { ContentBlock, Conversation, DocFile, Message, SlashCommand } from './types'
+import type { DocFile, SlashCommand } from './types'
 import { useClaudeChatCore } from '@shared/composables/useClaudeChatCore'
 
 interface UseChatOptions {

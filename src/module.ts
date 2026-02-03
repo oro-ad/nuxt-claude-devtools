@@ -112,12 +112,6 @@ export default defineNuxtModule<ModuleOptions>({
       nuxt.options.build.transpile = nuxt.options.build.transpile || []
       nuxt.options.build.transpile.push(runtimeDir)
 
-      // Ensure dependencies are optimized for the client
-      nuxt.options.vite = nuxt.options.vite || {}
-      nuxt.options.vite.optimizeDeps = nuxt.options.vite.optimizeDeps || {}
-      nuxt.options.vite.optimizeDeps.include = nuxt.options.vite.optimizeDeps.include || []
-      nuxt.options.vite.optimizeDeps.include.push('socket.io-client', 'marked')
-
       addPlugin({
         src: resolver.resolve('./runtime/overlay/plugin.client'),
         mode: 'client',
