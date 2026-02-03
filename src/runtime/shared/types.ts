@@ -53,3 +53,28 @@ export interface ShareUser {
   joinedAt: string
   lastSeen: string
 }
+
+// Message context types
+export interface MessageContextData {
+  viewport?: {
+    width: number
+    height: number
+  }
+  userAgent?: string
+  routing?: {
+    path: string
+    fullPath?: string
+    query?: Record<string, string | string[]>
+    params?: Record<string, string>
+    name?: string
+    pageComponent?: string
+  }
+  components?: string[]
+}
+
+export interface ContextChip {
+  id: 'viewport' | 'user-agent' | 'routing'
+  label: string
+  icon: string
+  active: boolean
+}

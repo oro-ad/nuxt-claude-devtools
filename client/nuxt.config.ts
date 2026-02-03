@@ -21,6 +21,10 @@ export default defineNuxtConfig({
     baseURL: '/__claude-devtools',
   },
 
+  alias: {
+    '@shared': resolve(__dirname, '../src/runtime/shared'),
+  },
+
   compatibilityDate: '2024-08-21',
 
   nitro: {

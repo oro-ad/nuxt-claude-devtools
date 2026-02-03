@@ -3,6 +3,7 @@ import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useClaudeChat } from '../../shared/composables/useClaudeChat'
 import { useVoiceInput } from '../../shared/composables/useVoiceInput'
 import { useShare } from '../../shared/composables/useShare'
+import { useMessageContext } from '../composables/useMessageContext'
 import type { SlashCommand } from '../../shared/types'
 import { useMobileSwipe, usePanelInteraction, usePanelPosition } from '../composables'
 import { ChatHeader, ChatInput, ChatMessages, ClaudeBadge, HistoryPanel, NicknameModal } from './chat'
@@ -111,7 +112,7 @@ const {
   isOwnMessage,
   copyShareLink,
 } = useShare({
-  getTunnelUrl: () => props.socketUrl || null,
+  getBaseUrl: () => props.socketUrl || window.location.origin,
   log: (...args) => {
     if (import.meta.env.DEV) console.log('[ChatOverlay:Share]', ...args)
   },
@@ -154,43 +155,27 @@ const {
 const showShareCopied = ref(false)
 const pendingNicknameAction = ref<'share' | 'message' | null>(null)
 
-// Context collection
+// Context collection (using shared composable)
+const { generateContextBlock } = useMessageContext()
+
+// Overlay always collects context (all chips enabled)
 function collectContext(): string | null {
-  const parts: string[] = [
-    `viewport: ${window.innerWidth}x${window.innerHeight}`,
-    `route: ${window.location.pathname}`,
-  ]
-
-  const ua = navigator.userAgent
-  const browser = ua.includes('Firefox/')
-    ? 'Firefox'
-    : ua.includes('Edg/')
-      ? 'Edge'
-      : ua.includes('Chrome/')
-        ? 'Chrome'
-        : ua.includes('Safari/') && !ua.includes('Chrome')
-          ? 'Safari'
-          : 'Unknown'
-
-  const os = ua.includes('Windows')
-    ? 'Windows'
-    : ua.includes('Mac OS')
-      ? 'macOS'
-      : ua.includes('Linux')
-        ? 'Linux'
-        : ua.includes('Android')
-          ? 'Android'
-          : (ua.includes('iPhone') || ua.includes('iPad'))
-              ? 'iOS'
-              : 'Unknown'
-
-  parts.push(`browser: ${browser} on ${os}`)
-
-  if (window.location.search) {
-    parts.push(`query: ${window.location.search}`)
+  const context = {
+    viewport: {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    },
+    userAgent: navigator.userAgent,
+    routing: {
+      path: window.location.pathname,
+      fullPath: window.location.pathname + window.location.search,
+      query: window.location.search
+        ? Object.fromEntries(new URLSearchParams(window.location.search)) as Record<string, string>
+        : undefined,
+    },
   }
 
-  return `[context]\n${parts.join('\n')}\n[/context]\n`
+  return generateContextBlock(context) + '\n'
 }
 
 // ============================================================================

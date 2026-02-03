@@ -206,7 +206,9 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Features Section -->
     <section class="features">
-      <h2 class="reveal reveal-up">{{ t('features.section_title') }}</h2>
+      <h2 class="reveal reveal-up">
+        {{ t('features.section_title') }}
+      </h2>
       <p class="section-subtitle reveal reveal-up">
         {{ t('features.section_subtitle') }}
       </p>
@@ -276,7 +278,9 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Modes Section -->
     <section class="modes">
-      <h2 class="reveal reveal-up">{{ t('modes.section_title') }}</h2>
+      <h2 class="reveal reveal-up">
+        {{ t('modes.section_title') }}
+      </h2>
       <p class="section-subtitle reveal reveal-up">
         {{ t('modes.section_subtitle') }}
       </p>
@@ -324,7 +328,9 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- Quick Start Section -->
     <section class="quickstart">
-      <h2 class="reveal reveal-up">{{ t('quickstart.title') }}</h2>
+      <h2 class="reveal reveal-up">
+        {{ t('quickstart.title') }}
+      </h2>
       <p class="section-subtitle reveal reveal-up">
         {{ t('quickstart.subtitle') }}
       </p>
@@ -350,8 +356,12 @@ const nuxtModulesUrl = 'https://nuxt.com/modules/nuxt-claude-devtools'
 
     <!-- CTA Section -->
     <section class="cta">
-      <h2 class="reveal reveal-up">{{ t('cta.title') }}</h2>
-      <p class="reveal reveal-up">{{ t('cta.subtitle') }}</p>
+      <h2 class="reveal reveal-up">
+        {{ t('cta.title') }}
+      </h2>
+      <p class="reveal reveal-up">
+        {{ t('cta.subtitle') }}
+      </p>
       <div class="cta-actions reveal reveal-up">
         <a
           :href="repoUrl"

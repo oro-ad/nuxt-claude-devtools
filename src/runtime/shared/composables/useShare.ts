@@ -8,16 +8,43 @@ import {
   URL_PARAM_SHARE_NICKNAME,
 } from '../constants'
 
-interface ShareOptions {
-  /** Get tunnel URL for share links */
-  getTunnelUrl?: () => string | null
+export interface ShareOptions {
+  /**
+   * Get URL parameter value (context-specific)
+   * For overlay: just check window.location
+   * For DevTools: check window, parent window, host route
+   */
+  getUrlParam?: (param: string) => string | null
+  /**
+   * Get base URL for share links (context-specific)
+   * For overlay: use tunnel URL or window.location.origin
+   * For DevTools: use tunnel URL, parent window, or window.location.origin
+   */
+  getBaseUrl?: () => string
   /** Log function */
   log?: (...args: unknown[]) => void
 }
 
-export function useShare(options: ShareOptions = {}) {
-  const { log = () => {} } = options
+// Default implementations for simple contexts (like overlay)
+function defaultGetUrlParam(param: string): string | null {
+  if (typeof window === 'undefined') return null
+  const params = new URLSearchParams(window.location.search)
+  return params.get(param)
+}
 
+function defaultGetBaseUrl(): string {
+  if (typeof window === 'undefined') return ''
+  return window.location.origin
+}
+
+export function useShare(options: ShareOptions = {}) {
+  const {
+    getUrlParam = defaultGetUrlParam,
+    getBaseUrl = defaultGetBaseUrl,
+    log = () => {},
+  } = options
+
+  // State
   const userId = ref<string | null>(null)
   const nickname = ref<string | null>(null)
   const users = ref<ShareUser[]>([])
@@ -26,59 +53,47 @@ export function useShare(options: ShareOptions = {}) {
   const isShareMode = computed(() => users.value.length > 1)
   const wasInvited = ref(false)
   const sharingActiveOnServer = ref(false)
-  const nicknameFromUrl = ref(false) // Track if nickname came from URL
+  const nicknameFromUrl = ref(false)
 
+  // Helpers
   function generateId(): string {
     return Math.random().toString(36).substring(2, 10)
   }
 
-  // Get share parameters from URL
-  function getShareParamsFromUrl(): { shareId: string | null, shareNickname: string | null } {
-    if (typeof window === 'undefined') return { shareId: null, shareNickname: null }
-
-    const params = new URLSearchParams(window.location.search)
-    return {
-      shareId: params.get(URL_PARAM_SHARE),
-      shareNickname: params.get(URL_PARAM_SHARE_NICKNAME),
-    }
+  function getUserIdFromUrl(): string | null {
+    return getUrlParam(URL_PARAM_SHARE)
   }
 
-  // Clean share params from URL
+  function getNicknameFromUrl(): string | null {
+    return getUrlParam(URL_PARAM_SHARE_NICKNAME)
+  }
+
   function cleanShareParamsFromUrl() {
     if (typeof window === 'undefined') return
 
-    const url = new URL(window.location.href)
-    let changed = false
-
-    if (url.searchParams.has(URL_PARAM_SHARE)) {
+    if (window.location.search.includes(URL_PARAM_SHARE) || window.location.search.includes(URL_PARAM_SHARE_NICKNAME)) {
+      const url = new URL(window.location.href)
       url.searchParams.delete(URL_PARAM_SHARE)
-      changed = true
-    }
-    if (url.searchParams.has(URL_PARAM_SHARE_NICKNAME)) {
       url.searchParams.delete(URL_PARAM_SHARE_NICKNAME)
-      changed = true
-    }
-
-    if (changed) {
       window.history.replaceState({}, '', url.toString())
     }
   }
 
-  // Initialize share - get or create user ID, handle URL nickname
+  // Initialize - get or create user ID
   function initShare() {
     if (typeof window === 'undefined') return
 
-    const { shareId, shareNickname } = getShareParamsFromUrl()
+    const urlUserId = getUserIdFromUrl()
+    const urlNickname = getNicknameFromUrl()
 
-    // Handle user ID from URL (invited user)
-    if (shareId) {
-      userId.value = shareId
+    log('initShare', { urlUserId, urlNickname })
+
+    if (urlUserId) {
+      userId.value = urlUserId
       wasInvited.value = true
-      localStorage.setItem(STORAGE_KEY_USER_ID, shareId)
-      log('Invited user ID:', shareId)
+      localStorage.setItem(STORAGE_KEY_USER_ID, urlUserId)
     }
     else {
-      // Check localStorage for existing ID
       const storedUserId = localStorage.getItem(STORAGE_KEY_USER_ID)
       if (storedUserId) {
         userId.value = storedUserId
@@ -87,26 +102,21 @@ export function useShare(options: ShareOptions = {}) {
         const newId = generateId()
         userId.value = newId
         localStorage.setItem(STORAGE_KEY_USER_ID, newId)
-        log('Generated new user ID:', newId)
       }
     }
 
-    // Handle nickname from URL (auto-save without modal)
-    if (shareNickname) {
-      nickname.value = shareNickname
-      localStorage.setItem(STORAGE_KEY_NICKNAME, shareNickname)
+    if (urlNickname) {
+      nickname.value = urlNickname
+      localStorage.setItem(STORAGE_KEY_NICKNAME, urlNickname)
       nicknameFromUrl.value = true
-      log('Nickname from URL:', shareNickname)
     }
     else {
-      // Load nickname from localStorage
       const storedNickname = localStorage.getItem(STORAGE_KEY_NICKNAME)
       if (storedNickname && storedNickname.trim()) {
         nickname.value = storedNickname
       }
     }
 
-    // Clean URL params
     cleanShareParamsFromUrl()
   }
 
@@ -115,21 +125,11 @@ export function useShare(options: ShareOptions = {}) {
     if (typeof window === 'undefined') return ''
 
     const inviteeId = generateId()
-
-    // Get base URL - prefer tunnel, then current window origin
-    let baseUrl: string
-    const tunnelUrl = options.getTunnelUrl?.()
-    if (tunnelUrl) {
-      baseUrl = tunnelUrl
-    }
-    else {
-      baseUrl = window.location.origin
-    }
+    const baseUrl = getBaseUrl()
 
     const url = new URL(baseUrl)
     url.searchParams.set(URL_PARAM_SHARE, inviteeId)
 
-    // Optionally include nickname in link
     if (includeNickname && nickname.value) {
       url.searchParams.set(URL_PARAM_SHARE_NICKNAME, nickname.value)
     }
@@ -151,7 +151,7 @@ export function useShare(options: ShareOptions = {}) {
     return wasInvited.value && !nickname.value && !nicknameFromUrl.value
   }
 
-  // Check if user needs nickname for sending message
+  // Check if user needs nickname for sending message (sharing active on server)
   function needsNicknameForMessage(): boolean {
     return sharingActiveOnServer.value && !nickname.value
   }
@@ -165,6 +165,16 @@ export function useShare(options: ShareOptions = {}) {
   function checkSharingStatus(socket: Socket | null) {
     if (!socket) return
     socket.emit('share:is_active')
+  }
+
+  // Sync existing credentials with server
+  function syncCredentials(socket: Socket | null) {
+    if (!socket || !userId.value || !nickname.value) return
+
+    socket.emit('share:sync', {
+      userId: userId.value,
+      nickname: nickname.value,
+    })
   }
 
   // Register user on server
@@ -211,6 +221,23 @@ export function useShare(options: ShareOptions = {}) {
       nicknameError.value = 'This nickname is already taken'
       showNicknameModal.value = true
     })
+
+    socket.on('share:synced', (data: { user: ShareUser | null, status: 'exists' | 'registered' | 'nickname_conflict' }) => {
+      if (data.status === 'nickname_conflict') {
+        nickname.value = null
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEY_NICKNAME)
+        }
+        nicknameError.value = 'Your nickname is already used by another user in this project'
+        showNicknameModal.value = true
+      }
+      else if (data.user) {
+        nickname.value = data.user.nickname
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(STORAGE_KEY_NICKNAME, data.user.nickname)
+        }
+      }
+    })
   }
 
   // Get nickname by ID
@@ -238,6 +265,7 @@ export function useShare(options: ShareOptions = {}) {
   }
 
   return {
+    // State
     userId,
     nickname,
     users,
@@ -247,6 +275,8 @@ export function useShare(options: ShareOptions = {}) {
     wasInvited,
     sharingActiveOnServer,
     nicknameFromUrl,
+
+    // Methods
     initShare,
     createShareLink,
     setNickname,
@@ -254,6 +284,7 @@ export function useShare(options: ShareOptions = {}) {
     needsNicknameForMessage,
     needsNicknameForShare,
     checkSharingStatus,
+    syncCredentials,
     registerUser,
     setupSocketListeners,
     getNicknameById,

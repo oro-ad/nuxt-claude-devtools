@@ -1,12 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
-
-export interface ContextChip {
-  id: 'viewport' | 'user-agent' | 'routing'
-  label: string
-  icon: string
-  active: boolean
-}
+import type { ContextChip } from '@shared/types'
 
 const props = defineProps<{
   chips: ContextChip[]
