@@ -34,6 +34,7 @@ export interface UseChatReturn {
   disconnect: () => void
   newChat: () => void
   sendMessage: (content: string, senderId?: string, senderNickname?: string) => void
+  stopGeneration: () => void
   addMessage: (role: Message['role'], content: string, streaming?: boolean) => Message
   toggleHistory: () => void
   selectConversation: (id: string) => void
@@ -271,6 +272,20 @@ export function useClaudeChat(options: UseChatOptions = {}): UseChatReturn {
       addMessage('system', data.message)
     })
 
+    socket.value.on('stream:stopped', (data: { message: string, partialContent?: string }) => {
+      log('Generation stopped:', data.message)
+      isProcessing.value = false
+
+      // Mark the last streaming message as complete
+      const lastMessage = messages.value.findLast(m => m.role === 'assistant' && m.streaming)
+      if (lastMessage) {
+        lastMessage.streaming = false
+        if (data.partialContent) {
+          lastMessage.content = data.partialContent + '\n\n*[Generation stopped by user]*'
+        }
+      }
+    })
+
     // User message from another client (collaborative mode)
     socket.value.on('stream:user_message', (data: Message) => {
       const currentUserId = getCurrentUserId?.()
@@ -311,6 +326,17 @@ export function useClaudeChat(options: UseChatOptions = {}): UseChatReturn {
 
     if (socket.value) {
       socket.value.emit('message:send', senderId ? { message: content, senderId } : content)
+    }
+
+    return true
+  }
+
+  function stopGeneration() {
+    if (!isProcessing.value || !isConnected.value) return false
+
+    log('Stopping generation')
+    if (socket.value) {
+      socket.value.emit('message:stop')
     }
 
     return true
@@ -358,6 +384,7 @@ export function useClaudeChat(options: UseChatOptions = {}): UseChatReturn {
     disconnect,
     newChat,
     sendMessage,
+    stopGeneration,
     addMessage,
     toggleHistory,
     selectConversation,

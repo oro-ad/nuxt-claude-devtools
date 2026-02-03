@@ -1,4 +1,5 @@
 import { execSync, spawn } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
 import type { Socket, Server as SocketServer } from 'socket.io'
 import { createLogger } from '../logger'
 import { AgentsManager } from './agents-manager'
@@ -97,6 +98,10 @@ export class ClaudeSession {
   // Track pending critical file operations
   private pendingCriticalFiles: Map<string, string> = new Map() // tool_id -> file_name
 
+  // Current running Claude process (for stop functionality)
+  private currentProcess: ChildProcess | null = null
+  private wasStopped: boolean = false
+
   constructor(config: ClaudeSessionConfig) {
     this.config = config
     this.historyManager = new HistoryManager(config.rootDir)
@@ -131,6 +136,11 @@ export class ClaudeSession {
         const senderId = typeof data === 'string' ? undefined : data.senderId
         log('Message received', { length: message.length, senderId, preview: message.substring(0, 100) })
         this.sendMessage(message, senderId)
+      })
+
+      socket.on('message:stop', () => {
+        log('Stop generation requested')
+        this.stopGeneration()
       })
 
       socket.on('session:reset', () => {
@@ -666,7 +676,46 @@ export class ClaudeSession {
   }
 
   destroy() {
+    this.stopGeneration()
     this.io?.close()
+  }
+
+  private stopGeneration() {
+    if (this.currentProcess && !this.currentProcess.killed) {
+      log('Stopping Claude process', { pid: this.currentProcess.pid })
+
+      // Mark as intentionally stopped (to avoid error message in close handler)
+      this.wasStopped = true
+
+      // Kill the process
+      this.currentProcess.kill('SIGTERM')
+
+      // Save partial response if any
+      if (this.accumulatedText || this.currentContentBlocks.length > 0) {
+        const assistantMessage: Message = {
+          id: this.currentMessageId,
+          role: 'assistant',
+          content: this.accumulatedText + '\n\n*[Generation stopped by user]*',
+          contentBlocks: this.currentContentBlocks.length > 0 ? [...this.currentContentBlocks] : undefined,
+          timestamp: new Date().toISOString(),
+          model: this.currentModel,
+        }
+        this.historyManager.addMessage(assistantMessage)
+      }
+
+      // Reset state
+      this.isProcessing = false
+      this.currentProcess = null
+
+      // Notify clients
+      this.io?.emit('stream:stopped', {
+        message: 'Generation stopped by user',
+        partialContent: this.accumulatedText,
+      })
+      this.io?.emit('session:status', { active: true, processing: false })
+
+      log('Claude process stopped')
+    }
   }
 
   private resetStreamState() {
@@ -676,6 +725,7 @@ export class ClaudeSession {
     this.currentModel = ''
     this.accumulatedText = ''
     this.pendingCriticalFiles.clear()
+    this.wasStopped = false
   }
 
   // Get DocsManager instance (for plugin initialization)
@@ -992,6 +1042,9 @@ export class ClaudeSession {
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
+    // Store process reference for stop functionality
+    this.currentProcess = child
+
     log('Claude process spawned', { pid: child.pid })
 
     child.stdout?.on('data', (data) => {
@@ -1023,8 +1076,17 @@ export class ClaudeSession {
     })
 
     child.on('close', (code) => {
-      log('Process closed', { exitCode: code })
+      log('Process closed', { exitCode: code, wasStopped: this.wasStopped })
+
+      // If process was intentionally stopped, don't process close event
+      // (stopGeneration already handled everything)
+      if (this.wasStopped) {
+        this.wasStopped = false
+        return
+      }
+
       this.isProcessing = false
+      this.currentProcess = null
 
       if (code === 0) {
         // Mark that next message should continue this conversation

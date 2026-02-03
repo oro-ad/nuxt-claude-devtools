@@ -127,6 +127,7 @@ const {
   connectSocket,
   disconnect,
   sendMessage: sendChatMessage,
+  stopGeneration,
   newChat,
   toggleHistory,
   selectConversation,
@@ -260,6 +261,10 @@ function handleVoiceInput() {
   toggleVoiceInput((transcript) => {
     chatInputRef.value?.appendText(transcript)
   })
+}
+
+function handleStopGeneration() {
+  stopGeneration()
 }
 
 // ============================================================================
@@ -456,6 +461,7 @@ onUnmounted(() => {
           :is-speech-supported="isSpeechSupported"
           @submit="handleMessageSubmit"
           @voice-input="handleVoiceInput"
+          @stop="handleStopGeneration"
         />
       </div>
     </Transition>

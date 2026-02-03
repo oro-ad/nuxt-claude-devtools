@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   submit: [message: string]
   voiceInput: []
+  stop: []
 }>()
 
 const inputMessage = ref('')
@@ -133,36 +134,36 @@ defineExpose({
             <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
           </svg>
         </button>
-        <!-- Send button -->
+        <!-- Stop button (when processing) -->
         <button
-          :disabled="!inputMessage.trim() || !isConnected || isProcessing"
+          v-if="isProcessing"
+          class="claude-stop-btn"
+          title="Stop generation"
+          @click="emit('stop')"
+        >
+          <svg
+            fill="currentColor"
+            height="20"
+            viewBox="0 0 24 24"
+            width="20"
+          >
+            <rect
+              height="14"
+              rx="2"
+              width="14"
+              x="5"
+              y="5"
+            />
+          </svg>
+        </button>
+        <!-- Send button (when not processing) -->
+        <button
+          v-else
+          :disabled="!inputMessage.trim() || !isConnected"
           class="claude-send-btn"
           @click="handleSubmit"
         >
           <svg
-            v-if="isProcessing"
-            class="claude-spinner"
-            fill="none"
-            height="20"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            width="20"
-          >
-            <circle
-              cx="12"
-              cy="12"
-              opacity="0.25"
-              r="10"
-              stroke-width="2"
-            />
-            <path
-              d="M12 2a10 10 0 0 1 10 10"
-              stroke-linecap="round"
-              stroke-width="2"
-            />
-          </svg>
-          <svg
-            v-else
             fill="currentColor"
             height="20"
             viewBox="0 0 24 24"
@@ -360,13 +361,34 @@ defineExpose({
   box-shadow: none;
 }
 
-.claude-spinner {
-  animation: claude-spin 1s linear infinite;
+.claude-stop-btn {
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-radius: var(--claude-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.35);
+  animation: claude-stop-pulse 2s ease-in-out infinite;
 }
 
-@keyframes claude-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.claude-stop-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes claude-stop-pulse {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(239, 68, 68, 0.35);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(239, 68, 68, 0.5);
+  }
 }
 
 @media (max-width: 640px) {

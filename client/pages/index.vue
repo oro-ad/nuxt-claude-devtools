@@ -102,6 +102,7 @@ const {
   disconnect,
   newChat,
   sendMessage: sendChatMessage,
+  stopGeneration,
   toggleHistory,
   selectConversation,
   deleteConversation,
@@ -254,6 +255,10 @@ function handleVoiceToggle() {
     inputMessage.value += transcript
     nextTick(adjustTextareaHeight)
   })
+}
+
+function handleStopGeneration() {
+  stopGeneration()
 }
 
 // Watch messages for scroll
@@ -739,9 +744,21 @@ onUnmounted(() => {
               <span class="text-xs">Recording...</span>
             </div>
           </div>
+          <!-- Stop generation button -->
           <NButton
-            v-if="isSpeechSupported"
-            :disabled="!isConnected || isProcessing"
+            v-if="isProcessing"
+            n="red"
+            title="Stop generation"
+            class="h-[42px] -mt-[6px] animate-pulse"
+            @click="handleStopGeneration"
+          >
+            <NIcon icon="carbon:stop-filled" />
+            Stop
+          </NButton>
+          <!-- Voice input button -->
+          <NButton
+            v-else-if="isSpeechSupported"
+            :disabled="!isConnected"
             :n="isRecording ? 'red' : 'gray'"
             :title="isRecording ? 'Stop recording' : 'Start voice input'"
             class="h-[42px] -mt-[6px]"
