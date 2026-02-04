@@ -1,3 +1,20 @@
+## v1.5.1 — Fix ESM/CJS Compatibility
+
+### Bug Fixes
+
+**socket.io-client Import Error**
+
+Fixed `SyntaxError: The requested module 'debug' does not provide an export named 'default'` when installing the module via npm/yarn.
+
+The `debug` package used by `socket.io-client` is CommonJS and lacks proper ESM exports. Added Vite `optimizeDeps.include` configuration to pre-bundle these dependencies correctly:
+
+- `socket.io-client`
+- `engine.io-client`
+- `debug`
+- `marked`
+
+---
+
 ## v1.5.0 — Redesign, Attachments & Stop Generation
 
 ### New Features

@@ -1,6 +1,6 @@
 {
   "name": "@oro.ad/nuxt-claude-devtools",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Nuxt DevTools integration for Claude Code AI assistant",
   "license": "GPL-3.0-only",
   "type": "module",
