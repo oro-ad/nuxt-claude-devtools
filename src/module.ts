@@ -112,6 +112,19 @@ export default defineNuxtModule<ModuleOptions>({
       nuxt.options.build.transpile = nuxt.options.build.transpile || []
       nuxt.options.build.transpile.push(runtimeDir)
 
+      // Resolve socket.io-client dependencies from module's node_modules
+      // Required because debug is a CJS module without proper ESM exports
+      nuxt.hook('vite:extendConfig', (config) => {
+        config.optimizeDeps = config.optimizeDeps || {}
+        config.optimizeDeps.include = config.optimizeDeps.include || []
+        config.optimizeDeps.include.push(
+          '@oro.ad/nuxt-claude-devtools > socket.io-client',
+          '@oro.ad/nuxt-claude-devtools > socket.io-client > engine.io-client',
+          '@oro.ad/nuxt-claude-devtools > socket.io-client > engine.io-client > debug',
+          '@oro.ad/nuxt-claude-devtools > marked',
+        )
+      })
+
       addPlugin({
         src: resolver.resolve('./runtime/overlay/plugin.client'),
         mode: 'client',
