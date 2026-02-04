@@ -1,3 +1,37 @@
+## v1.5.0 — Redesign, Attachments & Stop Generation
+
+### New Features
+
+**Stop Generation**
+
+Interrupt Claude's response at any time with the stop button.
+
+**File Attachments**
+
+Redesigned attachment menu with three options:
+- **Image** — pick from gallery
+- **Camera** — capture directly
+- **File** — native file browser (File System Access API on desktop)
+
+**Overlay Redesign**
+
+- Floating panel with improved glassmorphism styling
+- Refined chat input with better mobile UX
+- Smoother animations and transitions
+
+**Playground Redesign**
+
+- New landing page with feature showcase
+- Theme toggle (light/dark)
+- Improved responsive layout
+
+### Improvements
+
+- Shared composables refactored to `src/runtime/shared/`
+- Removed redundant `optimizeDeps.include` from module setup
+
+---
+
 ## v1.3.0 — Overlay & Collaboration
 
 Release introducing lightweight overlay mode and real-time collaborative chat sessions.

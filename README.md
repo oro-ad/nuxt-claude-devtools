@@ -12,8 +12,9 @@ Nuxt DevTools integration for [Claude Code](https://claude.ai/code) AI assistant
 ### Core
 - **Chat Interface** — Interactive chat with Claude AI directly in DevTools
 - **Overlay Mode** — Lightweight floating chat panel that works without DevTools (`devtools: false`)
-- **Streaming Responses** — Real-time streaming output from Claude
+- **Streaming Responses** — Real-time streaming output from Claude with stop generation support
 - **Voice Input** — Speech-to-text for hands-free messaging
+- **File Attachments** — Attach images (camera/gallery) and files to messages
 - **Session Management** — Start new conversations or continue previous ones
 - **Chat History** — Browse and restore previous conversations
 

@@ -1,12 +1,9 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from '#imports'
 
 const { t } = useI18n()
-
-// Scroll reveal
-const revealElements = ref<Element[]>([])
 
 function handleIntersection(entries: IntersectionObserverEntry[]) {
   entries.forEach((entry) => {
