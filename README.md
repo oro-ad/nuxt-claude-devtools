@@ -85,6 +85,8 @@ export default defineNuxtConfig({
 | `debug` | `boolean` | `false` | Enable debug logging in console |
 | `claude.command` | `string` | `'claude'` | Path to Claude CLI executable |
 | `claude.args` | `string[]` | `[]` | Additional arguments for Claude CLI |
+| `plugins.cachePath` | `string` | `undefined` | Path to Claude plugins cache directory |
+| `overlay.enabled` | `boolean` | `false` | Enable the floating chat overlay |
 
 ## Overlay Mode
 
@@ -100,6 +102,9 @@ export default defineNuxtConfig({
 
   claudeDevtools: {
     enabled: true,
+    overlay: {
+      enabled: true, // Enable floating chat overlay
+    },
   },
 })
 ```
